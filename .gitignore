@@ -1,0 +1,23 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
