@@ -4,7 +4,7 @@ import requests
 import argparse
 from datetime import datetime
 
-API_URL = "http://127.0.0.1:8000/api/telemetry"
+API_URL = "https://netpulse-network-monitor.onrender.com/api/telemetry"
 
 def generate_telemetry(device_id, name, api_key):
     # Simulate realistic network variance
