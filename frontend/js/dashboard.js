@@ -1,11 +1,24 @@
-// Target the Live Render Backend
-const API_BASE = "https://netpulse-network-monitor.onrender.com";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
+  authDomain: "netpulse-network-monitor.firebaseapp.com",
+  projectId: "netpulse-network-monitor",
+  storageBucket: "netpulse-network-monitor.firebasestorage.app",
+  messagingSenderId: "343464434638",
+  appId: "1:343464434638:web:fbeae97be457a97d99699f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Use the environment key your agent is pushing to
+const ENVIRONMENT_KEY = "demo_env_12345";
 
 let healthChart = null;
 let latencyChart = null;
 let networkTopology = null;
-window.pollTimer = null;
-let currentInterval = 5000;
 let allDevicesData = [];
 
 // Vis.js Data Sets
@@ -59,7 +72,6 @@ function initTopology() {
     };
     networkTopology = new vis.Network(container, data, options);
     
-    // Seed Base Architecture
     topoNodes.add([
         { id: 1, label: 'Internet Gateway', color: { background: '#1e293b', border: '#3b82f6' }, level: 0 },
         { id: 2, label: 'Enterprise Firewall', color: { background: '#1e293b', border: '#10b981' }, level: 1 },
@@ -91,98 +103,96 @@ function initCharts() {
         options: {
             responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, grid: { color: 'rgba(51, 65, 85, 0.2)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
-            animation: { duration: 0 } // Prevent looping animation on poll
+            animation: { duration: 400 }
         }
     });
 }
 
-async function fetchStats() {
-    try {
-        // Appending the timestamp ensures the browser always fetches fresh data
-        let res = await fetch(`${API_BASE}/api/stats?t=${Date.now()}`);
-        let data = await res.json();
-        
-        /* ... keep your existing DOM update logic exactly the same ... */
+function processTelemetryData(devices) {
+    if (devices.length === 0) return;
 
-        document.getElementById('stat-total').innerText = data.online + data.warning;
-        document.getElementById('stat-online-text').innerHTML = `<span class="text-emerald-400">${data.online} Healthy</span> | <span class="text-amber-400">${data.warning} Warning</span>`;
-        document.getElementById('stat-latency').innerText = data.avg_latency;
-        document.getElementById('stat-loss').innerText = data.avg_packet_loss;
-        document.getElementById('stat-jitter').innerText = data.avg_jitter;
+    let online = 0, warning = 0, offline = 0;
+    let totalLatency = 0, totalLoss = 0;
 
-        if (healthChart && data.total_devices > 0) {
-            healthChart.data.datasets[0].data = [data.online, data.warning, data.offline];
-            healthChart.update();
-            document.getElementById('chart-center-pct').innerText = `${((data.online / data.total_devices) * 100).toFixed(1)}%`;
+    devices.forEach(d => {
+        if (d.status === "Online") online++;
+        else if (d.status === "Warning") warning++;
+        else offline++;
+
+        totalLatency += d.latency_ms || 0;
+        totalLoss += d.packet_loss || 0;
+    });
+
+    let avgLatency = (totalLatency / devices.length).toFixed(2);
+    let avgLoss = (totalLoss / devices.length).toFixed(2);
+
+    // Update KPIs
+    document.getElementById('stat-total').innerText = devices.length;
+    document.getElementById('stat-online-text').innerHTML = `<span class="text-emerald-400">${online} Healthy</span> | <span class="text-amber-400">${warning} Warning</span> | <span class="text-rose-400">${offline} Offline</span>`;
+    document.getElementById('stat-latency').innerText = avgLatency;
+    document.getElementById('stat-loss').innerText = avgLoss;
+    document.getElementById('stat-jitter').innerText = (Math.random() * 5).toFixed(2); // Simulated Jitter
+
+    // Update Donut Chart
+    if (healthChart) {
+        healthChart.data.datasets[0].data = [online, warning, offline];
+        healthChart.update();
+        document.getElementById('chart-center-pct').innerText = `${((online / devices.length) * 100).toFixed(1)}%`;
+    }
+
+    // Update Rolling Latency Chart
+    if (latencyChart) {
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        latencyChart.data.labels.push(now);
+        latencyChart.data.datasets[0].data.push(avgLatency);
+        if (latencyChart.data.labels.length > 15) {
+            latencyChart.data.labels.shift();
+            latencyChart.data.datasets[0].data.shift();
         }
+        latencyChart.update();
+    }
 
-        // Update Rolling Latency Graph
-        if (latencyChart) {
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            latencyChart.data.labels.push(now);
-            latencyChart.data.datasets[0].data.push(data.avg_latency);
-            if (latencyChart.data.labels.length > 15) {
-                latencyChart.data.labels.shift();
-                latencyChart.data.datasets[0].data.shift();
-            }
-            latencyChart.update();
-        }
-
-        // Dynamically update Topology Nodes based on overall health
-        if (data.offline > 10) {
-            topoNodes.update({ id: 5, color: { border: '#ef4444' } }); // Rose
-        } else if (data.warning > 20) {
-            topoNodes.update({ id: 5, color: { border: '#fbbf24' } }); // Amber
-        } else {
-            topoNodes.update({ id: 5, color: { border: '#10b981' } }); // Emerald
-        }
-        
-    } catch (err) {
-        console.error("Failed to fetch telemetry stats:", err);
+    // Update Topology Nodes dynamically
+    if (offline > 0) {
+        topoNodes.update({ id: 5, color: { border: '#ef4444' } });
+    } else if (warning > 0) {
+        topoNodes.update({ id: 5, color: { border: '#fbbf24' } });
+    } else {
+        topoNodes.update({ id: 5, color: { border: '#10b981' } });
     }
 }
 
+function updateTables() {
+    let tbody = document.getElementById('device-table-body');
+    tbody.innerHTML = "";
 
-async function fetchDevices() {
-    try {
-        // Appending the timestamp ensures the browser always fetches fresh data
-        let res = await fetch(`${API_BASE}/api/devices?t=${Date.now()}`);
-        allDevicesData = await res.json(); 
-        
-        /* ... keep your existing table generation logic exactly the same ... */
-        
-        let tbody = document.getElementById('device-table-body');
-        tbody.innerHTML = "";
+    allDevicesData.slice(0, 6).forEach(d => {
+        let { badgeColor, statusDot } = getStatusColors(d.status);
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-800/30 transition-colors">
+                <td class="px-4 py-2"><div class="text-white font-medium">${d.name}</div><div class="text-[10px] text-slate-500 font-mono">${d.id}</div></td>
+                <td class="px-4 py-2 text-slate-400">Agent Node</td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 text-[10px] font-medium rounded border flex items-center w-max gap-1.5 ${badgeColor}"><span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span> ${d.status}</span></td>
+            </tr>`;
+    });
 
-        allDevicesData.slice(0, 6).forEach(d => {
-            let { badgeColor, statusDot } = getStatusColors(d.status);
-            tbody.innerHTML += `
-                <tr class="hover:bg-slate-800/30 transition-colors">
-                    <td class="px-4 py-2"><div class="text-white font-medium">${d.name}</div><div class="text-[10px] text-slate-500 font-mono">${d.ip_address}</div></td>
-                    <td class="px-4 py-2 text-slate-400">${d.type}</td>
-                    <td class="px-4 py-2"><span class="px-2 py-0.5 text-[10px] font-medium rounded border flex items-center w-max gap-1.5 ${badgeColor}"><span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span> ${d.status}</span></td>
-                </tr>`;
-        });
-
-        if (!document.getElementById('view-agents').classList.contains('hidden')) {
-            renderFullAgentsTable();
-        }
-    } catch (err) {
-        console.error("Failed to fetch device grid:", err);
+    if (!document.getElementById('view-agents').classList.contains('hidden')) {
+        renderFullAgentsTable();
     }
 }
 
 function renderFullAgentsTable() {
     let tbody = document.getElementById('full-agents-table-body');
+    if (!tbody) return;
     tbody.innerHTML = "";
     allDevicesData.forEach(d => {
         let { badgeColor, statusDot } = getStatusColors(d.status);
         tbody.innerHTML += `
             <tr class="hover:bg-slate-800/30 transition-colors">
-                <td class="px-5 py-3 text-slate-300 font-mono text-xs">${d.device_id}</td>
+                <td class="px-5 py-3 text-slate-300 font-mono text-xs">${d.id}</td>
                 <td class="px-5 py-3 text-white font-medium">${d.name}</td>
-                <td class="px-5 py-3 text-slate-400">${d.type}</td>
-                <td class="px-5 py-3 text-slate-400 font-mono text-xs">${d.ip_address}</td>
+                <td class="px-5 py-3 text-slate-400">Agent Node</td>
+                <td class="px-5 py-3 text-slate-400 font-mono text-xs">Dynamic</td>
                 <td class="px-5 py-3"><span class="px-2 py-1 text-[10px] font-medium rounded border flex items-center w-max gap-1.5 ${badgeColor}"><span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span> ${d.status}</span></td>
                 <td class="px-5 py-3 text-slate-300 font-mono">${d.latency_ms} ms</td>
                 <td class="px-5 py-3 text-slate-300 font-mono">${d.packet_loss}%</td>
@@ -196,27 +206,30 @@ function getStatusColors(status) {
     return { badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30", statusDot: "bg-emerald-400" };
 }
 
-function startPolling() {
-    if (window.pollTimer) clearInterval(window.pollTimer);
-    window.pollTimer = setInterval(() => { fetchStats(); fetchDevices(); }, currentInterval);
+function listenToFirestore() {
+    const devicesRef = collection(db, "networks", ENVIRONMENT_KEY, "devices");
+    
+    // onSnapshot pushes live updates instantly when data changes
+    onSnapshot(devicesRef, (snapshot) => {
+        allDevicesData = [];
+        snapshot.forEach((doc) => {
+            allDevicesData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        processTelemetryData(allDevicesData);
+        updateTables();
+    }, (error) => {
+        console.error("Error listening to Firestore:", error);
+    });
 }
 
 function initDashboard() {
-    currentInterval = parseInt(document.getElementById('polling-interval').value);
-
     initNavigation();
     initTopology();
     initCharts();
-    fetchStats();
-    fetchDevices();
-    startPolling();
     
-    document.getElementById('apply-polling').addEventListener('click', () => {
-        currentInterval = parseInt(document.getElementById('polling-interval').value);
-        fetchStats(); fetchDevices(); startPolling();
-    });
-
-    document.getElementById('export-csv-btn').addEventListener('click', () => window.open(`${API_BASE}/api/export`, '_blank'));
+    // Start Live WebSocket stream
+    listenToFirestore();
 }
 
 window.addEventListener('DOMContentLoaded', initDashboard);
