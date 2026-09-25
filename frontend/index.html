@@ -44,9 +44,28 @@
             <div class="flex items-center gap-3 text-sm text-emerald-400">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
                 Live Monitoring
-                
             </div>
-            <div class="text-sm text-slate-400 font-mono" id="current-time">--:--:--</div>
+            
+            <div class="flex items-center gap-4">
+                 <div class="text-sm text-slate-400 font-mono" id="current-time">--:--:--</div>
+                 <!-- Authentication Buttons -->
+                 <div id="auth-header-container">
+                     <!-- Default state: Demo Mode -->
+                     <a href="login.html" id="btn-demo-login" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-500/50 font-medium text-xs px-4 py-2 rounded transition flex items-center gap-2">
+                         <i class="fas fa-sign-in-alt"></i> Login / Sign Up
+                     </a>
+                     
+                     <!-- Logged In State (Hidden initially) -->
+                     <div id="logged-in-nav" class="hidden flex gap-3">
+                         <button id="btn-profile" class="bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-medium text-xs px-4 py-2 rounded transition">
+                            <i class="fas fa-user mr-1"></i> Profile Hub
+                         </button>
+                         <button id="btn-signout" class="text-slate-400 hover:text-rose-400 font-medium text-xs px-4 py-2 transition">
+                            Sign Out
+                         </button>
+                     </div>
+                 </div>
+            </div>
         </header>
 
         <!-- VIEW 1: DASHBOARD -->
@@ -127,9 +146,6 @@
         <div id="view-agents" class="hidden p-6 space-y-6 flex-1 flex-col h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-semibold text-white">All Network Agents</h2>
-                <button id="export-csv-btn" class="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/50 font-medium text-xs px-4 py-2 rounded transition flex items-center gap-2">
-                    <i class="fas fa-file-csv"></i> Export Full Report
-                </button>
             </div>
             
             <div class="noc-card rounded-xl flex-1 flex flex-col overflow-hidden">
@@ -148,6 +164,38 @@
                         </thead>
                         <tbody id="full-agents-table-body" class="divide-y divide-slate-800/40"></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: PROFILE / PROVISIONING HUB (New) -->
+        <div id="view-profile" class="hidden p-6 space-y-6 flex-1 flex-col h-full max-w-4xl mx-auto">
+            <h2 class="text-2xl font-semibold text-white mb-2">Agent Provisioning</h2>
+            <p class="text-sm text-slate-400 mb-6">Connect your local machine to the NetPulse dashboard using your unique API key.</p>
+            
+            <div class="noc-card rounded-xl p-6 border-l-4 border-blue-500">
+                <h3 class="text-lg font-medium text-white mb-4"><i class="fas fa-terminal text-blue-400 mr-2"></i> Quick Start Command</h3>
+                <p class="text-sm text-slate-400 mb-4">Run the following command in your terminal to start streaming telemetry from your local machine. Your API key has been pre-injected.</p>
+                
+                <div class="bg-slate-900 rounded border border-slate-700 p-4 font-mono text-sm text-emerald-400 relative">
+                    <button id="btn-copy-command" class="absolute top-3 right-3 text-slate-500 hover:text-white transition">
+                        <i class="far fa-copy"></i>
+                    </button>
+                    <code id="provisioning-command">python agent\netpulse_agent.py --key "<span id="display-api-key" class="text-blue-400">Loading...</span>" --id "DEV-01" --name "My-Local-PC"</code>
+                </div>
+            </div>
+
+            <div class="noc-card rounded-xl p-6 mt-6">
+                <h3 class="text-lg font-medium text-white mb-4">Account Information</h3>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-slate-500 block">Email Address</span>
+                        <span id="profile-email" class="text-white font-medium">Loading...</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block">Environment UID (API Key)</span>
+                        <span id="profile-uid" class="text-slate-300 font-mono text-xs">Loading...</span>
+                    </div>
                 </div>
             </div>
         </div>

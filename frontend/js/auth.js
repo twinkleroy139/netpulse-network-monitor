@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// TODO: Replace this with your actual config from the Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
   authDomain: "netpulse-network-monitor.firebaseapp.com",
@@ -11,18 +10,17 @@ const firebaseConfig = {
   appId: "1:343464434638:web:fbeae97be457a97d99699f"
 };
 
-
-
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+export const auth = getAuth(app); // Export auth so dashboard.js can use it
 
-// Check if already logged in
-onAuthStateChanged(auth, (user) => {
-    if (user && window.location.pathname.includes('login.html')) {
-        window.location.href = 'index.html'; // Redirect to dashboard
-    }
-});
+// Check if already logged in (Only redirect if they are on the login page)
+if (window.location.pathname.includes('login.html')) {
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            window.location.href = 'index.html'; 
+        }
+    });
+}
 
 const loginForm = document.getElementById('login-form');
 const errorMsg = document.getElementById('error-msg');
@@ -61,4 +59,19 @@ if (loginForm) {
             errorMsg.classList.remove('hidden');
         }
     });
+}
+
+// Signout functionality triggered from the dashboard header
+export const initSignOut = () => {
+    const signOutBtn = document.getElementById('btn-signout');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        });
+    }
 }

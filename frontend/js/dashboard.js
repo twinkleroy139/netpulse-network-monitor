@@ -1,5 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { auth, initSignOut } from "./auth.js"; // Import Auth Logic
 
 const firebaseConfig = {
   apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
@@ -13,55 +15,82 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Use the environment key your agent is pushing to
-const ENVIRONMENT_KEY = "demo_env_12345";
+// Dynamic Environment Key
+let ENVIRONMENT_KEY = "demo_env_12345"; 
+let firestoreUnsubscribe = null; 
+let currentUser = null;
 
 let healthChart = null;
 let latencyChart = null;
 let networkTopology = null;
 let allDevicesData = [];
 
-// Vis.js Data Sets
 let topoNodes = new vis.DataSet([]);
 let topoEdges = new vis.DataSet([]);
 
 setInterval(() => {
-    document.getElementById('current-time').innerText = new Date().toLocaleTimeString();
+    const timeEl = document.getElementById('current-time');
+    if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
 function initNavigation() {
     const navDashboard = document.getElementById('nav-dashboard');
     const navAgents = document.getElementById('nav-agents');
+    
     const viewDashboard = document.getElementById('view-dashboard');
     const viewAgents = document.getElementById('view-agents');
+    const viewProfile = document.getElementById('view-profile');
+    
     const btnViewAll = document.getElementById('btn-view-all');
+    const btnProfile = document.getElementById('btn-profile');
+
+    function hideAllViews() {
+        if(viewDashboard) { viewDashboard.classList.add('hidden'); viewDashboard.classList.remove('block'); }
+        if(viewAgents) { viewAgents.classList.add('hidden'); viewAgents.classList.remove('flex'); }
+        if(viewProfile) { viewProfile.classList.add('hidden'); viewProfile.classList.remove('flex'); }
+        
+        if(navDashboard) navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        if(navAgents) navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+    }
 
     function showDashboard() {
-        viewDashboard.classList.remove('hidden');
-        viewDashboard.classList.add('block');
-        viewAgents.classList.add('hidden');
-        viewAgents.classList.remove('flex');
-        navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-        navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        hideAllViews();
+        if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
+        if(navDashboard) navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
     }
 
     function showAgents() {
-        viewDashboard.classList.add('hidden');
-        viewDashboard.classList.remove('block');
-        viewAgents.classList.remove('hidden');
-        viewAgents.classList.add('flex');
-        navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-        navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        hideAllViews();
+        if(viewAgents) { viewAgents.classList.remove('hidden'); viewAgents.classList.add('flex'); }
+        if(navAgents) navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
         renderFullAgentsTable();
+    }
+    
+    function showProfile() {
+        hideAllViews();
+        if(viewProfile) { viewProfile.classList.remove('hidden'); viewProfile.classList.add('flex'); }
     }
 
     if (navDashboard) navDashboard.addEventListener('click', showDashboard);
     if (navAgents) navAgents.addEventListener('click', showAgents);
     if (btnViewAll) btnViewAll.addEventListener('click', showAgents);
+    if (btnProfile) btnProfile.addEventListener('click', showProfile);
+    
+    // Copy Command Logic for the Agent provisioning
+    const btnCopy = document.getElementById('btn-copy-command');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', () => {
+            const command = document.getElementById('provisioning-command').innerText;
+            navigator.clipboard.writeText(command);
+            btnCopy.innerHTML = '<i class="fas fa-check text-emerald-400"></i>';
+            setTimeout(() => { btnCopy.innerHTML = '<i class="far fa-copy"></i>'; }, 2000);
+        });
+    }
 }
 
 function initTopology() {
     const container = document.getElementById('topology-network');
+    if(!container) return;
     const data = { nodes: topoNodes, edges: topoEdges };
     const options = {
         nodes: { shape: 'dot', size: 16, font: { color: '#f8fafc', size: 12, face: 'monospace' }, borderWidth: 2, shadow: true },
@@ -86,26 +115,32 @@ function initTopology() {
 }
 
 function initCharts() {
-    const ctxHealth = document.getElementById('healthChart').getContext('2d');
-    healthChart = new Chart(ctxHealth, {
-        type: 'doughnut',
-        data: { labels: ['Healthy', 'Warning', 'Critical'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#34d399', '#fbbf24', '#fb7185'], borderWidth: 0, cutout: '80%' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    const ctxHealthEl = document.getElementById('healthChart');
+    if(ctxHealthEl) {
+        const ctxHealth = ctxHealthEl.getContext('2d');
+        healthChart = new Chart(ctxHealth, {
+            type: 'doughnut',
+            data: { labels: ['Healthy', 'Warning', 'Critical'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#34d399', '#fbbf24', '#fb7185'], borderWidth: 0, cutout: '80%' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
 
-    const ctxLatency = document.getElementById('latencyChart').getContext('2d');
-    latencyChart = new Chart(ctxLatency, {
-        type: 'line',
-        data: {
-            labels: [], 
-            datasets: [{ label: 'System Avg Latency (ms)', data: [], borderColor: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.1)', tension: 0.4, borderWidth: 2, pointRadius: 3, fill: true }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: 'rgba(51, 65, 85, 0.2)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
-            animation: { duration: 400 }
-        }
-    });
+    const ctxLatencyEl = document.getElementById('latencyChart');
+    if(ctxLatencyEl) {
+        const ctxLatency = ctxLatencyEl.getContext('2d');
+        latencyChart = new Chart(ctxLatency, {
+            type: 'line',
+            data: {
+                labels: [], 
+                datasets: [{ label: 'System Avg Latency (ms)', data: [], borderColor: '#34d399', backgroundColor: 'rgba(52, 211, 153, 0.1)', tension: 0.4, borderWidth: 2, pointRadius: 3, fill: true }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, grid: { color: 'rgba(51, 65, 85, 0.2)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
+                animation: { duration: 400 }
+            }
+        });
+    }
 }
 
 function processTelemetryData(devices) {
@@ -126,21 +161,28 @@ function processTelemetryData(devices) {
     let avgLatency = (totalLatency / devices.length).toFixed(2);
     let avgLoss = (totalLoss / devices.length).toFixed(2);
 
-    // Update KPIs
-    document.getElementById('stat-total').innerText = devices.length;
-    document.getElementById('stat-online-text').innerHTML = `<span class="text-emerald-400">${online} Healthy</span> | <span class="text-amber-400">${warning} Warning</span> | <span class="text-rose-400">${offline} Offline</span>`;
-    document.getElementById('stat-latency').innerText = avgLatency;
-    document.getElementById('stat-loss').innerText = avgLoss;
-    document.getElementById('stat-jitter').innerText = (Math.random() * 5).toFixed(2); // Simulated Jitter
+    const statTotal = document.getElementById('stat-total');
+    if(statTotal) statTotal.innerText = devices.length;
+    
+    const statOnlineText = document.getElementById('stat-online-text');
+    if(statOnlineText) statOnlineText.innerHTML = `<span class="text-emerald-400">${online} Healthy</span> | <span class="text-amber-400">${warning} Warning</span> | <span class="text-rose-400">${offline} Offline</span>`;
+    
+    const statLat = document.getElementById('stat-latency');
+    if(statLat) statLat.innerText = avgLatency;
+    
+    const statLoss = document.getElementById('stat-loss');
+    if(statLoss) statLoss.innerText = avgLoss;
+    
+    const statJit = document.getElementById('stat-jitter');
+    if(statJit) statJit.innerText = (Math.random() * 5).toFixed(2); 
 
-    // Update Donut Chart
     if (healthChart) {
         healthChart.data.datasets[0].data = [online, warning, offline];
         healthChart.update();
-        document.getElementById('chart-center-pct').innerText = `${((online / devices.length) * 100).toFixed(1)}%`;
+        const pct = document.getElementById('chart-center-pct');
+        if(pct) pct.innerText = `${((online / devices.length) * 100).toFixed(1)}%`;
     }
 
-    // Update Rolling Latency Chart
     if (latencyChart) {
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         latencyChart.data.labels.push(now);
@@ -152,7 +194,6 @@ function processTelemetryData(devices) {
         latencyChart.update();
     }
 
-    // Update Topology Nodes dynamically
     if (offline > 0) {
         topoNodes.update({ id: 5, color: { border: '#ef4444' } });
     } else if (warning > 0) {
@@ -164,6 +205,7 @@ function processTelemetryData(devices) {
 
 function updateTables() {
     let tbody = document.getElementById('device-table-body');
+    if(!tbody) return;
     tbody.innerHTML = "";
 
     allDevicesData.slice(0, 6).forEach(d => {
@@ -176,7 +218,8 @@ function updateTables() {
             </tr>`;
     });
 
-    if (!document.getElementById('view-agents').classList.contains('hidden')) {
+    const viewAgents = document.getElementById('view-agents');
+    if (viewAgents && !viewAgents.classList.contains('hidden')) {
         renderFullAgentsTable();
     }
 }
@@ -207,10 +250,14 @@ function getStatusColors(status) {
 }
 
 function listenToFirestore() {
+    // Prevent duplicate listeners
+    if (firestoreUnsubscribe) {
+        firestoreUnsubscribe();
+    }
+
     const devicesRef = collection(db, "networks", ENVIRONMENT_KEY, "devices");
     
-    // onSnapshot pushes live updates instantly when data changes
-    onSnapshot(devicesRef, (snapshot) => {
+    firestoreUnsubscribe = onSnapshot(devicesRef, (snapshot) => {
         allDevicesData = [];
         snapshot.forEach((doc) => {
             allDevicesData.push({ id: doc.id, ...doc.data() });
@@ -223,13 +270,49 @@ function listenToFirestore() {
     });
 }
 
+function handleAuthState() {
+    onAuthStateChanged(auth, (user) => {
+        const btnDemoLogin = document.getElementById('btn-demo-login');
+        const loggedInNav = document.getElementById('logged-in-nav');
+        const profileEmail = document.getElementById('profile-email');
+        const profileUid = document.getElementById('profile-uid');
+        const displayApiKey = document.getElementById('display-api-key');
+
+        if (user) {
+            // User Logged In
+            currentUser = user;
+            ENVIRONMENT_KEY = user.uid; // Switch to private database environment
+            
+            if(btnDemoLogin) btnDemoLogin.classList.add('hidden');
+            if(loggedInNav) loggedInNav.classList.remove('hidden');
+            
+            if (profileEmail) profileEmail.innerText = user.email;
+            if (profileUid) profileUid.innerText = user.uid;
+            if (displayApiKey) displayApiKey.innerText = user.uid;
+            
+            listenToFirestore();
+
+        } else {
+            // Public Demo User
+            currentUser = null;
+            ENVIRONMENT_KEY = "demo_env_12345";
+            
+            if(btnDemoLogin) btnDemoLogin.classList.remove('hidden');
+            if(loggedInNav) loggedInNav.classList.add('hidden');
+            
+            listenToFirestore();
+        }
+    });
+}
+
 function initDashboard() {
     initNavigation();
     initTopology();
     initCharts();
+    initSignOut(); 
     
-    // Start Live WebSocket stream
-    listenToFirestore();
+    // Check login state automatically starts Firestore listener
+    handleAuthState();
 }
 
 window.addEventListener('DOMContentLoaded', initDashboard);
