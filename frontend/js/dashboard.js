@@ -98,8 +98,11 @@ function initCharts() {
 
 async function fetchStats() {
     try {
-        let res = await fetch(`${API_BASE}/api/stats`);
+        // Appending the timestamp ensures the browser always fetches fresh data
+        let res = await fetch(`${API_BASE}/api/stats?t=${Date.now()}`);
         let data = await res.json();
+        
+        /* ... keep your existing DOM update logic exactly the same ... */
 
         document.getElementById('stat-total').innerText = data.online + data.warning;
         document.getElementById('stat-online-text').innerHTML = `<span class="text-emerald-400">${data.online} Healthy</span> | <span class="text-amber-400">${data.warning} Warning</span>`;
@@ -139,10 +142,14 @@ async function fetchStats() {
     }
 }
 
+
 async function fetchDevices() {
     try {
-        let res = await fetch(`${API_BASE}/api/devices`);
+        // Appending the timestamp ensures the browser always fetches fresh data
+        let res = await fetch(`${API_BASE}/api/devices?t=${Date.now()}`);
         allDevicesData = await res.json(); 
+        
+        /* ... keep your existing table generation logic exactly the same ... */
         
         let tbody = document.getElementById('device-table-body');
         tbody.innerHTML = "";

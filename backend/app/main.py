@@ -1,11 +1,8 @@
+import io
 import csv
-from io import StringIO
-from flask import Response
-
-
 import threading
 import time
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 from flask_cors import CORS
 from sqlalchemy import func
 from backend.app.core.database import db
@@ -13,7 +10,7 @@ from backend.app.models.device import DeviceModel
 from backend.app.simulation.engine import init_simulated_devices, update_simulated_devices
 
 app = Flask(__name__)
-CORS(app)  # <--- Allow frontend polling from any origin
+CORS(app)  # Allows frontend polling from any origin
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///netpulse.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -45,7 +42,7 @@ def get_dashboard_stats():
     warning = DeviceModel.query.filter_by(status="Warning").count()
     offline = DeviceModel.query.filter_by(status="Offline").count()
 
-    # Calculate system-wide averages. Filter out Offline nodes for latency/jitter to prevent skewing the average down to 0.
+    # Calculate averages. Filter out Offline nodes to prevent skewing averages down to 0.
     avg_lat = db.session.query(func.avg(DeviceModel.latency_ms)).filter(DeviceModel.status != "Offline").scalar() or 0.0
     avg_jit = db.session.query(func.avg(DeviceModel.jitter_ms)).filter(DeviceModel.status != "Offline").scalar() or 0.0
     avg_loss = db.session.query(func.avg(DeviceModel.packet_loss)).scalar() or 0.0
@@ -62,7 +59,7 @@ def get_dashboard_stats():
 
 @app.route("/api/devices")
 def get_devices():
-    """Returns the list of all 500+ simulated network devices."""
+    """Returns the list of all simulated network devices."""
     devices = DeviceModel.query.all()
     result = []
     for d in devices:
@@ -87,7 +84,7 @@ def export_devices_csv():
     """Generates a downloadable CSV report of all network agents."""
     devices = DeviceModel.query.all()
     
-    si = StringIO()
+    si = io.StringIO()
     cw = csv.writer(si)
     
     # Write the CSV Header row
@@ -121,5 +118,5 @@ if __name__ == "__main__":
     sim_thread = threading.Thread(target=background_simulation_loop, daemon=True)
     sim_thread.start()
 
-    print("[+] Starting NetPulse Flask Server on http://127.0.0.1:8000")
+    print("[+] Starting NetPulse Flask Server on http://0.0.0.0:8000")
     app.run(host="0.0.0.0", port=8000, debug=False)
