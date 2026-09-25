@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetPulse - Secure Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#0b101e] text-slate-200 antialiased h-screen flex items-center justify-center">
+
+    <div class="noc-card rounded-xl p-8 w-full max-w-md border-t-2 border-t-blue-500">
+        <div class="text-center mb-8">
+            <div class="w-12 h-12 mx-auto rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-4">
+                <i class="fas fa-wave-square text-white text-xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white">NetPulse Access</h1>
+            <p class="text-sm text-slate-400 mt-1">Authenticate to view live telemetry</p>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
+                <input type="email" id="email" required class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Password</label>
+                <input type="password" id="password" required class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition">
+            </div>
+            
+            <div id="error-msg" class="text-rose-400 text-xs hidden"></div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition mt-4">
+                Initialize Session <i class="fas fa-arrow-right ml-2 text-sm"></i>
+            </button>
+        </form>
+
+        <div class="mt-6 text-center text-xs text-slate-500">
+            Don't have an environment? <a href="#" id="signup-link" class="text-blue-400 hover:text-blue-300">Provision one</a>
+        </div>
+    </div>
+
+    <!-- Firebase Web SDKs -->
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>
