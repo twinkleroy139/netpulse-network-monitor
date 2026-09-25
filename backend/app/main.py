@@ -1,4 +1,5 @@
 import os
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -57,6 +58,6 @@ async def receive_telemetry(payload: TelemetryPayload):
 
 
 if __name__ == "__main__":
-    # Fetch Render's assigned port, default to 8000 for local testing
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+    # Uvicorn is required to run FastAPI apps
+    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=port)
