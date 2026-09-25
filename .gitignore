@@ -21,3 +21,9 @@ Thumbs.db
 
 # Docker
 *.log
+
+
+
+backend/app/core/serviceAccountKey.json
+serviceAccountKey.json
+*.json
