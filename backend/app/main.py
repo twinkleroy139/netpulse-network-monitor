@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -52,3 +53,10 @@ async def receive_telemetry(payload: TelemetryPayload):
         return {"status": "success", "message": "Telemetry securely recorded"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+if __name__ == "__main__":
+    # Fetch Render's assigned port, default to 8000 for local testing
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
