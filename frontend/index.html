@@ -168,20 +168,35 @@
             </div>
         </div>
 
-        <!-- VIEW 3: PROFILE / PROVISIONING HUB (New) -->
+        <!-- VIEW 3: PROFILE / PROVISIONING HUB -->
         <div id="view-profile" class="hidden p-6 space-y-6 flex-1 flex-col h-full max-w-4xl mx-auto">
             <h2 class="text-2xl font-semibold text-white mb-2">Agent Provisioning</h2>
             <p class="text-sm text-slate-400 mb-6">Connect your local machine to the NetPulse dashboard using your unique API key.</p>
             
             <div class="noc-card rounded-xl p-6 border-l-4 border-blue-500">
-                <h3 class="text-lg font-medium text-white mb-4"><i class="fas fa-terminal text-blue-400 mr-2"></i> Quick Start Command</h3>
-                <p class="text-sm text-slate-400 mb-4">Run the following command in your terminal to start streaming telemetry from your local machine. Your API key has been pre-injected.</p>
+                <h3 class="text-lg font-medium text-white mb-4"><i class="fas fa-terminal text-blue-400 mr-2"></i> Custom Script Generator</h3>
+                <p class="text-sm text-slate-400 mb-6">Configure your node environment to generate a custom tracking script.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Environment Type</label>
+                        <select id="prov-env-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                            <option value="HOME">Home Network</option>
+                            <option value="OFFICE">Office Network</option>
+                            <option value="CLOUD">Cloud Server</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Device Name</label>
+                        <input type="text" id="prov-device-name" placeholder="e.g., HQ-Workstation" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
                 
                 <div class="bg-slate-900 rounded border border-slate-700 p-4 font-mono text-sm text-emerald-400 relative">
                     <button id="btn-copy-command" class="absolute top-3 right-3 text-slate-500 hover:text-white transition">
                         <i class="far fa-copy"></i>
                     </button>
-                    <code id="provisioning-command">python agent\netpulse_agent.py --key "<span id="display-api-key" class="text-blue-400">Loading...</span>" --id "DEV-01" --name "My-Local-PC"</code>
+                    <code id="provisioning-command">python agent\netpulse_agent.py --key "Loading..." --id "Loading..." --name "Loading..."</code>
                 </div>
             </div>
 
@@ -199,6 +214,7 @@
                 </div>
             </div>
         </div>
+        
     </main>
 
     <script type="module" src="js/dashboard.js"></script>

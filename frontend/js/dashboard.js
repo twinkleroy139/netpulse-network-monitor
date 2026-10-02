@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { auth, initSignOut } from "./auth.js"; // Import Auth Logic
+import { initProvisioning } from "./provisioning.js"; // <--- Add this line
 
 const firebaseConfig = {
   apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
@@ -33,60 +34,6 @@ setInterval(() => {
     if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-function initNavigation() {
-    const navDashboard = document.getElementById('nav-dashboard');
-    const navAgents = document.getElementById('nav-agents');
-    
-    const viewDashboard = document.getElementById('view-dashboard');
-    const viewAgents = document.getElementById('view-agents');
-    const viewProfile = document.getElementById('view-profile');
-    
-    const btnViewAll = document.getElementById('btn-view-all');
-    const btnProfile = document.getElementById('btn-profile');
-
-    function hideAllViews() {
-        if(viewDashboard) { viewDashboard.classList.add('hidden'); viewDashboard.classList.remove('block'); }
-        if(viewAgents) { viewAgents.classList.add('hidden'); viewAgents.classList.remove('flex'); }
-        if(viewProfile) { viewProfile.classList.add('hidden'); viewProfile.classList.remove('flex'); }
-        
-        if(navDashboard) navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-        if(navAgents) navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-    }
-
-    function showDashboard() {
-        hideAllViews();
-        if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
-        if(navDashboard) navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-    }
-
-    function showAgents() {
-        hideAllViews();
-        if(viewAgents) { viewAgents.classList.remove('hidden'); viewAgents.classList.add('flex'); }
-        if(navAgents) navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-        renderFullAgentsTable();
-    }
-    
-    function showProfile() {
-        hideAllViews();
-        if(viewProfile) { viewProfile.classList.remove('hidden'); viewProfile.classList.add('flex'); }
-    }
-
-    if (navDashboard) navDashboard.addEventListener('click', showDashboard);
-    if (navAgents) navAgents.addEventListener('click', showAgents);
-    if (btnViewAll) btnViewAll.addEventListener('click', showAgents);
-    if (btnProfile) btnProfile.addEventListener('click', showProfile);
-    
-    // Copy Command Logic for the Agent provisioning
-    const btnCopy = document.getElementById('btn-copy-command');
-    if (btnCopy) {
-        btnCopy.addEventListener('click', () => {
-            const command = document.getElementById('provisioning-command').innerText;
-            navigator.clipboard.writeText(command);
-            btnCopy.innerHTML = '<i class="fas fa-check text-emerald-400"></i>';
-            setTimeout(() => { btnCopy.innerHTML = '<i class="far fa-copy"></i>'; }, 2000);
-        });
-    }
-}
 
 function initTopology() {
     const container = document.getElementById('topology-network');
@@ -276,7 +223,6 @@ function handleAuthState() {
         const loggedInNav = document.getElementById('logged-in-nav');
         const profileEmail = document.getElementById('profile-email');
         const profileUid = document.getElementById('profile-uid');
-        const displayApiKey = document.getElementById('display-api-key');
 
         if (user) {
             // User Logged In
@@ -288,7 +234,9 @@ function handleAuthState() {
             
             if (profileEmail) profileEmail.innerText = user.email;
             if (profileUid) profileUid.innerText = user.uid;
-            if (displayApiKey) displayApiKey.innerText = user.uid;
+            
+            // Initialize the script generator with their private key
+            initProvisioning(user.uid);
             
             listenToFirestore();
 
@@ -306,7 +254,6 @@ function handleAuthState() {
 }
 
 function initDashboard() {
-    initNavigation();
     initTopology();
     initCharts();
     initSignOut(); 
