@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { auth, initSignOut } from "./auth.js"; // Import Auth Logic
-import { initProvisioning } from "./provisioning.js"; // <--- Add this line
+import { auth, initSignOut } from "./auth.js"; 
+import { initProvisioning } from "./provisioning.js"; 
 
 const firebaseConfig = {
   apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
@@ -16,7 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Dynamic Environment Key
 let ENVIRONMENT_KEY = "demo_env_12345"; 
 let firestoreUnsubscribe = null; 
 let currentUser = null;
@@ -34,6 +33,50 @@ setInterval(() => {
     if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
+// Restored Navigation Router
+function initNavigation() {
+    const navDashboard = document.getElementById('nav-dashboard');
+    const navAgents = document.getElementById('nav-agents');
+    
+    const viewDashboard = document.getElementById('view-dashboard');
+    const viewAgents = document.getElementById('view-agents');
+    const viewProfile = document.getElementById('view-profile');
+    
+    const btnViewAll = document.getElementById('btn-view-all');
+    const btnProfile = document.getElementById('btn-profile');
+
+    function hideAllViews() {
+        if(viewDashboard) { viewDashboard.classList.add('hidden'); viewDashboard.classList.remove('block'); }
+        if(viewAgents) { viewAgents.classList.add('hidden'); viewAgents.classList.remove('flex'); }
+        if(viewProfile) { viewProfile.classList.add('hidden'); viewProfile.classList.remove('flex'); }
+        
+        if(navDashboard) navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        if(navAgents) navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+    }
+
+    function showDashboard() {
+        hideAllViews();
+        if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
+        if(navDashboard) navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+    }
+
+    function showAgents() {
+        hideAllViews();
+        if(viewAgents) { viewAgents.classList.remove('hidden'); viewAgents.classList.add('flex'); }
+        if(navAgents) navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        renderFullAgentsTable();
+    }
+    
+    function showProfile() {
+        hideAllViews();
+        if(viewProfile) { viewProfile.classList.remove('hidden'); viewProfile.classList.add('flex'); }
+    }
+
+    if (navDashboard) navDashboard.addEventListener('click', showDashboard);
+    if (navAgents) navAgents.addEventListener('click', showAgents);
+    if (btnViewAll) btnViewAll.addEventListener('click', showAgents);
+    if (btnProfile) btnProfile.addEventListener('click', showProfile);
+}
 
 function initTopology() {
     const container = document.getElementById('topology-network');
@@ -197,7 +240,6 @@ function getStatusColors(status) {
 }
 
 function listenToFirestore() {
-    // Prevent duplicate listeners
     if (firestoreUnsubscribe) {
         firestoreUnsubscribe();
     }
@@ -225,9 +267,8 @@ function handleAuthState() {
         const profileUid = document.getElementById('profile-uid');
 
         if (user) {
-            // User Logged In
             currentUser = user;
-            ENVIRONMENT_KEY = user.uid; // Switch to private database environment
+            ENVIRONMENT_KEY = user.uid; 
             
             if(btnDemoLogin) btnDemoLogin.classList.add('hidden');
             if(loggedInNav) loggedInNav.classList.remove('hidden');
@@ -235,13 +276,10 @@ function handleAuthState() {
             if (profileEmail) profileEmail.innerText = user.email;
             if (profileUid) profileUid.innerText = user.uid;
             
-            // Initialize the script generator with their private key
             initProvisioning(user.uid);
-            
             listenToFirestore();
 
         } else {
-            // Public Demo User
             currentUser = null;
             ENVIRONMENT_KEY = "demo_env_12345";
             
@@ -254,11 +292,11 @@ function handleAuthState() {
 }
 
 function initDashboard() {
+    initNavigation(); // <-- Restored!
     initTopology();
     initCharts();
     initSignOut(); 
     
-    // Check login state automatically starts Firestore listener
     handleAuthState();
 }
 
