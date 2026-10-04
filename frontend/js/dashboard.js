@@ -50,9 +50,17 @@ function initNavigation() {
             }
         }
 
-        initTopology();
+
+
+
         initCharts();
+        setTimeout(() => {
+            initTopology();
+        }, 50);
         
+
+        
+
         const envTabs = document.querySelectorAll('.env-tab');
         envTabs.forEach(tab => {
             tab.addEventListener('click', (e) => {

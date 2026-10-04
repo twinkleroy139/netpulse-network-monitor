@@ -97,12 +97,24 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         if(statOnlineText) statOnlineText.innerHTML = `<span class="text-slate-500">No active agents.</span>`;
         if (warnLatEl) warnLatEl.classList.add('hidden');
         if (warnLossEl) warnLossEl.classList.add('hidden');
+        
+
+        
         if (healthChart) {
-            healthChart.data.datasets[0].data = [0, 0, 1];
-            healthChart.update();
-            const pct = document.getElementById('chart-center-pct');
-            if(pct) pct.innerText = "0%";
+        healthChart.data.datasets[0].data = [online, warning, offline];
+        healthChart.update();
+        const pct = document.getElementById('chart-center-pct');
+        
+        if (pct) {
+            if (activeAgentCount === 0) {
+                pct.innerText = "N/A";
+                pct.classList.add("text-sm");
+            } else {
+                pct.innerText = `${((online / activeAgentCount) * 100).toFixed(1)}%`;
+                pct.classList.remove("text-sm");
+            }
         }
+    }
         return;
     }
 
