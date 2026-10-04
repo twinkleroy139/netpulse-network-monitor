@@ -16,7 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let currentEnvironmentFilter = "ALL"; // Default to showing everything
+let currentEnvironmentFilter = "ALL"; 
 let ENVIRONMENT_KEY = "demo_env_12345"; 
 let firestoreUnsubscribe = null; 
 let currentUser = null;
@@ -34,10 +34,10 @@ setInterval(() => {
     if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-// Restored Navigation Router
 function initNavigation() {
     const navDashboard = document.getElementById('nav-dashboard');
     const navAgents = document.getElementById('nav-agents');
+    const navLocalNode = document.getElementById('nav-local-node'); // NEW: Local Node Button
     
     const viewDashboard = document.getElementById('view-dashboard');
     const viewAgents = document.getElementById('view-agents');
@@ -53,12 +53,17 @@ function initNavigation() {
         
         if(navDashboard) navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
         if(navAgents) navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        if(navLocalNode) navLocalNode.classList.remove('bg-blue-500/10', 'border-l-2', 'border-blue-500');
     }
 
     function showDashboard() {
         hideAllViews();
         if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
         if(navDashboard) navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
+        
+        currentEnvironmentFilter = "ALL";
+        processTelemetryData(allDevicesData);
+        updateTables();
     }
 
     function showAgents() {
@@ -78,31 +83,44 @@ function initNavigation() {
     if (btnViewAll) btnViewAll.addEventListener('click', showAgents);
     if (btnProfile) btnProfile.addEventListener('click', showProfile);
 
-    // --- New Environment Tabs Logic ---
+    // --- NEW: Local Node Sidebar Logic ---
+    if (navLocalNode) {
+        navLocalNode.addEventListener('click', () => {
+            const myNodeId = localStorage.getItem('my_local_node_id');
+            if (!myNodeId) {
+                alert("You haven't configured a local script yet! Go to the Profile Hub first.");
+                return;
+            }
+            
+            hideAllViews();
+            if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
+            navLocalNode.classList.add('bg-blue-500/10', 'border-l-2', 'border-blue-500');
+
+            // Force filter to exact machine ID
+            currentEnvironmentFilter = "LOCAL_NODE";
+            processTelemetryData(allDevicesData);
+            updateTables();
+        });
+    }
+
+    // --- Environment Tabs Logic ---
     const envTabs = document.querySelectorAll('.env-tab');
     envTabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
-            // Remove active classes from all tabs
             envTabs.forEach(t => {
                 t.classList.remove('bg-blue-500/20', 'text-blue-400', 'border-blue-500/30');
                 t.classList.add('bg-slate-800/50', 'text-slate-400', 'border-transparent');
             });
             
-            // Add active class to clicked tab
             const clickedTab = e.target;
             clickedTab.classList.remove('bg-slate-800/50', 'text-slate-400', 'border-transparent');
             clickedTab.classList.add('bg-blue-500/20', 'text-blue-400', 'border-blue-500/30');
             
-            // Update the global filter variable
             currentEnvironmentFilter = clickedTab.getAttribute('data-env');
-            
-            // Immediately re-process the data with the new filter
             processTelemetryData(allDevicesData);
-            updateTables(); // Ensure the mini-table also filters (you'll need to update updateTables too)
+            updateTables(); 
         });
     });
-
-
 }
 
 function initTopology() {
@@ -162,34 +180,34 @@ function initCharts() {
 
 function processTelemetryData(devices) {
     if (devices.length === 0) {
-        // Reset UI if no devices found
         const statTotal = document.getElementById('stat-total');
         if(statTotal) statTotal.innerText = "0";
         return; 
     }
 
-    // 1. FILTER THE DATA BASED ON THE SELECTED TAB
     let filteredDevices = devices;
-    if (currentEnvironmentFilter !== "ALL") {
-        // Only keep devices whose ID starts with the selected environment (e.g., "OFFICE-")
+    
+    // NEW: Apply Local Node Filter or Environment Filter
+    if (currentEnvironmentFilter === "LOCAL_NODE") {
+        const myNodeId = localStorage.getItem('my_local_node_id');
+        filteredDevices = devices.filter(d => d.id === myNodeId);
+    } else if (currentEnvironmentFilter !== "ALL") {
         filteredDevices = devices.filter(d => d.id.startsWith(currentEnvironmentFilter + '-'));
     }
 
-    // If the filter resulted in 0 devices, reset the UI and exit early
     if (filteredDevices.length === 0) {
         document.getElementById('stat-total').innerText = "0";
         document.getElementById('stat-latency').innerText = "--";
         document.getElementById('stat-loss').innerText = "--";
-        document.getElementById('stat-online-text').innerHTML = `<span class="text-slate-500">No active agents in this environment.</span>`;
+        document.getElementById('stat-online-text').innerHTML = `<span class="text-slate-500">No active agents.</span>`;
         if (healthChart) {
-            healthChart.data.datasets[0].data = [0, 0, 1]; // Make donut grey/empty
+            healthChart.data.datasets[0].data = [0, 0, 1];
             healthChart.update();
             document.getElementById('chart-center-pct').innerText = "0%";
         }
         return;
     }
 
-    // 2. CALCULATE METRICS ONLY ON THE FILTERED DATA
     let online = 0, warning = 0, offline = 0;
     let totalLatency = 0, totalLoss = 0;
 
@@ -244,7 +262,16 @@ function updateTables() {
     if(!tbody) return;
     tbody.innerHTML = "";
 
-    allDevicesData.slice(0, 6).forEach(d => {
+    // Keep the mini table matching the filtered list
+    let filteredList = allDevicesData;
+    if (currentEnvironmentFilter === "LOCAL_NODE") {
+        const myNodeId = localStorage.getItem('my_local_node_id');
+        filteredList = allDevicesData.filter(d => d.id === myNodeId);
+    } else if (currentEnvironmentFilter !== "ALL") {
+        filteredList = allDevicesData.filter(d => d.id.startsWith(currentEnvironmentFilter + '-'));
+    }
+
+    filteredList.slice(0, 6).forEach(d => {
         let { badgeColor, statusDot } = getStatusColors(d.status);
         tbody.innerHTML += `
             <tr class="hover:bg-slate-800/30 transition-colors">
@@ -324,7 +351,6 @@ function handleAuthState() {
             
             initProvisioning(user.uid);
             listenToFirestore();
-
         } else {
             currentUser = null;
             ENVIRONMENT_KEY = "demo_env_12345";
@@ -338,11 +364,10 @@ function handleAuthState() {
 }
 
 function initDashboard() {
-    initNavigation(); // <-- Restored!
+    initNavigation();
     initTopology();
     initCharts();
     initSignOut(); 
-    
     handleAuthState();
 }
 
