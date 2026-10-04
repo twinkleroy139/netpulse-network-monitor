@@ -1,40 +1,27 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// frontend/js/dashboard.js
+
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { auth, initSignOut } from "./auth.js"; 
 import { initProvisioning } from "./provisioning.js"; 
 
-// 1. IMPORT THE HTML VIEWS
 import { dashboardHTML } from "./views/dashboardView.js";
 import { agentsHTML } from "./views/agentsView.js";
 import { profileHTML } from "./views/profileView.js";
 
-import { firebaseConfig } from "./config.js";
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { initTopology, initCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
+import { listenToFirestore, startWatchdogTimer, allDevicesData } from "./firebase_client.js";
 
 let currentEnvironmentFilter = "ALL"; 
 let ENVIRONMENT_KEY = "demo_env_12345"; 
-let firestoreUnsubscribe = null; 
 let currentUser = null;
-
-let healthChart = null;
-let latencyChart = null;
-let networkTopology = null;
-let allDevicesMap = new Map(); 
-let allDevicesData = [];
 
 setInterval(() => {
     const timeEl = document.getElementById('current-time');
     if (timeEl) timeEl.innerText = new Date().toLocaleTimeString();
 }, 1000);
 
-// --- NEW DYNAMIC NAVIGATION LOGIC ---
 function initNavigation() {
     const appContent = document.getElementById('app-content');
-    
-    // Sidebar Links
     const navDashboard = document.getElementById('nav-dashboard');
     const navLocalNode = document.getElementById('nav-local-node'); 
     const navAgents = document.getElementById('nav-agents');
@@ -49,24 +36,23 @@ function initNavigation() {
 
     function loadDashboardView(filterType = "ALL") {
         resetSidebarHighlight();
-        
-        // Inject HTML
         appContent.innerHTML = `<div class="p-6 space-y-6 flex-1 block">${dashboardHTML}</div>`;
         
-        // Setup Active UI Highlight
         if (filterType === "LOCAL_NODE") {
-            navLocalNode.classList.remove('text-slate-400', 'border-transparent');
-            navLocalNode.classList.add('bg-emerald-500/10', 'text-emerald-300', 'border-emerald-500');
+            if(navLocalNode) {
+                navLocalNode.classList.remove('text-slate-400', 'border-transparent');
+                navLocalNode.classList.add('bg-emerald-500/10', 'text-emerald-300', 'border-emerald-500');
+            }
         } else {
-            navDashboard.classList.remove('text-slate-400', 'border-transparent');
-            navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+            if(navDashboard) {
+                navDashboard.classList.remove('text-slate-400', 'border-transparent');
+                navDashboard.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+            }
         }
 
-        // Re-initialize Charts & Topology inside the newly injected HTML
         initTopology();
         initCharts();
         
-        // Setup Environment Tabs inside newly injected HTML
         const envTabs = document.querySelectorAll('.env-tab');
         envTabs.forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -79,42 +65,42 @@ function initNavigation() {
                 clickedTab.classList.add('bg-blue-500/20', 'text-blue-400', 'border-blue-500/30');
                 
                 currentEnvironmentFilter = clickedTab.getAttribute('data-env');
-                processTelemetryData(allDevicesData);
-                updateTables(); 
+                processTelemetryData(allDevicesData, currentEnvironmentFilter);
+                updateTables(allDevicesData, currentEnvironmentFilter); 
             });
         });
 
         currentEnvironmentFilter = filterType;
-        processTelemetryData(allDevicesData);
-        updateTables();
+        processTelemetryData(allDevicesData, currentEnvironmentFilter);
+        updateTables(allDevicesData, currentEnvironmentFilter);
     }
 
     function loadAgentsView() {
         resetSidebarHighlight();
         appContent.innerHTML = `<div class="p-6 space-y-6 flex-1 flex-col h-full">${agentsHTML}</div>`;
-        navAgents.classList.remove('text-slate-400', 'border-transparent');
-        navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
-        renderFullAgentsTable();
+        if(navAgents) {
+            navAgents.classList.remove('text-slate-400', 'border-transparent');
+            navAgents.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+        }
+        renderFullAgentsTable(allDevicesData);
     }
     
     function loadProfileView() {
         resetSidebarHighlight();
         appContent.innerHTML = `<div class="p-6 space-y-6 flex-1 flex-col h-full max-w-4xl mx-auto">${profileHTML}</div>`;
-        
-        // Must re-initialize provisioning script logic when profile HTML is injected
         if (currentUser) {
             initProvisioning(currentUser.uid);
-            document.getElementById('profile-email').innerText = currentUser.email;
-            document.getElementById('profile-uid').innerText = currentUser.uid;
+            const emailEl = document.getElementById('profile-email');
+            const uidEl = document.getElementById('profile-uid');
+            if(emailEl) emailEl.innerText = currentUser.email;
+            if(uidEl) uidEl.innerText = currentUser.uid;
         }
     }
 
-    // Attach Sidebar Click Listeners
     if (navDashboard) navDashboard.addEventListener('click', () => loadDashboardView("ALL"));
     if (navAgents) navAgents.addEventListener('click', loadAgentsView);
     if (btnProfile) btnProfile.addEventListener('click', loadProfileView);
     
-    // View All Agents shortcut button (lives inside dashboardView HTML)
     document.addEventListener('click', function(e){
         if(e.target && e.target.id == 'btn-view-all'){
             loadAgentsView();
@@ -132,8 +118,43 @@ function initNavigation() {
         });
     }
 
-    // Load Default View on Startup
     loadDashboardView("ALL");
 }
 
-// ... Keep initTopology(), initCharts(), processTelemetryData(), etc. exactly as they are below ...
+function handleAuthState() {
+    onAuthStateChanged(auth, (user) => {
+        const btnDemoLogin = document.getElementById('btn-demo-login');
+        const loggedInNav = document.getElementById('logged-in-nav');
+        const profileEmail = document.getElementById('profile-email');
+        const profileUid = document.getElementById('profile-uid');
+
+        if (user) {
+            currentUser = user;
+            ENVIRONMENT_KEY = user.uid; 
+            
+            if(btnDemoLogin) btnDemoLogin.classList.add('hidden');
+            if(loggedInNav) loggedInNav.classList.remove('hidden');
+            if(profileEmail) profileEmail.innerText = user.email;
+            if(profileUid) profileUid.innerText = user.uid;
+            
+            listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
+        } else {
+            currentUser = null;
+            ENVIRONMENT_KEY = "demo_env_12345";
+            
+            if(btnDemoLogin) btnDemoLogin.classList.remove('hidden');
+            if(loggedInNav) loggedInNav.classList.add('hidden');
+            
+            listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
+        }
+    });
+}
+
+function initDashboard() {
+    initNavigation();
+    initSignOut(); 
+    handleAuthState();
+    startWatchdogTimer(currentEnvironmentFilter);
+}
+
+window.addEventListener('DOMContentLoaded', initDashboard);
