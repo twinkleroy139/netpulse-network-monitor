@@ -67,11 +67,11 @@ def push_speed_results(base_url, env_key, device_id, dl_mbps):
         print(f"[!] Failed to push speed results: {e}")
 
 
-def measure_latency(host="8.8.8.8"):
+def measure_latency(host="www.google.com"):
     try:
         start = time.time()
         req = urllib.request.Request(f"http://{host}", method="HEAD")
-        with urllib.request.urlopen(req, timeout=2) as response:
+        with urllib.request.urlopen(req, timeout=3) as response:
             end = time.time()
         return round((end - start) * 1000, 2)
     except Exception:

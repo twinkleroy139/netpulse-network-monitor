@@ -1,6 +1,7 @@
 // frontend/js/dashboard.js
 
 
+import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest } from "./firebase_client.js";
 
 import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -126,7 +127,7 @@ function initNavigation() {
             navVoip.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
         }
 
-        // --- NEW: Trigger Speed Test Logic ---
+        // --- UPDATED: Trigger Speed Test Logic ---
         const btnSpeedTest = document.getElementById('btn-run-speedtest');
         if (btnSpeedTest) {
             btnSpeedTest.addEventListener('click', async () => {
@@ -136,18 +137,12 @@ function initNavigation() {
                 btnSpeedTest.disabled = true;
 
                 try {
-                    // Write a command to a 'commands' collection in Firebase
-                    const commandRef = doc(db, "networks", ENVIRONMENT_KEY, "commands", "speedtest");
-                    await setDoc(commandRef, {
-                        action: "run_speed_test",
-                        timestamp: Date.now(),
-                        status: "pending"
-                    });
+                    await triggerSpeedTest(ENVIRONMENT_KEY); // <-- Clean function call
                     
                     setTimeout(() => {
                         btnSpeedTest.innerHTML = `<i class="fas fa-tachometer-alt"></i> Run Speed Test`;
                         btnSpeedTest.disabled = false;
-                    }, 5000); // Reset button after 5 seconds
+                    }, 5000); 
                 } catch (error) {
                     console.error("Error triggering test:", error);
                     btnSpeedTest.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`;

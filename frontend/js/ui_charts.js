@@ -1,8 +1,6 @@
 // frontend/js/ui_charts.js
 import { calculateMOS } from "./voip_engine.js";
 
-
-
 export let healthChart = null;
 export let latencyChart = null;
 export let networkTopology = null;
@@ -12,6 +10,11 @@ export let topoEdges = new vis.DataSet([]);
 export function initTopology() {
     const container = document.getElementById('topology-network');
     if(!container) return;
+    
+    // NEW: Clear old data before drawing to prevent duplicate ID crashes
+    topoNodes.clear();
+    topoEdges.clear();
+
     const data = { nodes: topoNodes, edges: topoEdges };
     const options = {
         nodes: { shape: 'dot', size: 16, font: { color: '#f8fafc', size: 12, face: 'monospace' }, borderWidth: 2, shadow: true },
@@ -98,23 +101,15 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         if (warnLatEl) warnLatEl.classList.add('hidden');
         if (warnLossEl) warnLossEl.classList.add('hidden');
         
-
-        
         if (healthChart) {
-        healthChart.data.datasets[0].data = [online, warning, offline];
-        healthChart.update();
-        const pct = document.getElementById('chart-center-pct');
-        
-        if (pct) {
-            if (activeAgentCount === 0) {
+            healthChart.data.datasets[0].data = [0, 0, 1];
+            healthChart.update();
+            const pct = document.getElementById('chart-center-pct');
+            if(pct) {
                 pct.innerText = "N/A";
                 pct.classList.add("text-sm");
-            } else {
-                pct.innerText = `${((online / activeAgentCount) * 100).toFixed(1)}%`;
-                pct.classList.remove("text-sm");
             }
         }
-    }
         return;
     }
 
@@ -130,8 +125,6 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         totalLoss += d.packet_loss || 0;
     });
 
-
-    // BUG FIX: Only calculate averages based on ACTIVE agents (Online or Warning)
     let activeAgentCount = online + warning;
     let avgLatency = "0.00";
     let avgLoss = "0.00";
@@ -140,8 +133,6 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         avgLatency = (totalLatency / activeAgentCount).toFixed(2);
         avgLoss = (totalLoss / activeAgentCount).toFixed(2);
     } 
-
-
 
     const statTotal = document.getElementById('stat-total');
     if(statTotal) statTotal.innerText = filteredDevices.length;
@@ -154,22 +145,16 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
     
     const statLoss = document.getElementById('stat-loss');
     if(statLoss) statLoss.innerText = avgLoss;
-    
-    
-    
-
-
 
     const statJit = document.getElementById('stat-jitter');
     let simulatedJitter = (Math.random() * 5).toFixed(2);
     
-    // If all agents are offline, jitter should be 0, not a random number
     if (activeAgentCount === 0) {
         simulatedJitter = "0.00";
     }
     if(statJit) statJit.innerText = simulatedJitter; 
 
-    // --- NEW: MOS Calculation & UI Update ---
+    // MOS Calculation & UI Update
     const mosData = calculateMOS(parseFloat(avgLatency), parseFloat(simulatedJitter), parseFloat(avgLoss));
     
     const statMos = document.getElementById('stat-mos');
@@ -199,7 +184,7 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
             }
         }
         
-        // --- NEW: Update Topology VoIP Node Color ---
+        // Update Topology VoIP Node Color
         if (topoNodes.get(4)) { 
             let nodeColor = '#10b981'; // Green
             if (mosData.score < 3.6) nodeColor = '#f43f5e'; // Red
@@ -208,12 +193,12 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
             topoNodes.update({ 
                 id: 4, 
                 color: { background: '#1e293b', border: nodeColor },
-                title: `MOS: ${mosData.score} (${mosData.label})` // Tooltip on hover
+                title: `MOS: ${mosData.score} (${mosData.label})` 
             });
         }
     }
     
-    // --- Existing Warning Logic ---
+    // Existing Warning Logic
     if (warnLatEl) {
         if (avgLatency >= 100 || warning > 0) {
             warnLatEl.classList.remove('hidden');
@@ -236,7 +221,16 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         healthChart.data.datasets[0].data = [online, warning, offline];
         healthChart.update();
         const pct = document.getElementById('chart-center-pct');
-        if(pct) pct.innerText = `${((online / filteredDevices.length) * 100).toFixed(1)}%`;
+        
+        if (pct) {
+            if (activeAgentCount === 0) {
+                pct.innerText = "N/A";
+                pct.classList.add("text-sm");
+            } else {
+                pct.innerText = `${((online / activeAgentCount) * 100).toFixed(1)}%`;
+                pct.classList.remove("text-sm");
+            }
+        }
     }
 
     if (latencyChart) {

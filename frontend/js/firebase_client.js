@@ -1,7 +1,7 @@
 // frontend/js/firebase_client.js
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"; // <-- Updated import
 import { firebaseConfig } from "./config.js";
 import { processTelemetryData, updateTables } from "./ui_charts.js";
 
@@ -63,4 +63,15 @@ export function startWatchdogTimer(currentEnvironmentFilter) {
             updateTables(allDevicesData, currentEnvironmentFilter);
         }
     }, 5000);
+}
+
+
+
+export async function triggerSpeedTest(ENVIRONMENT_KEY) {
+    const commandRef = doc(db, "networks", ENVIRONMENT_KEY, "commands", "speedtest");
+    await setDoc(commandRef, {
+        action: "run_speed_test",
+        timestamp: Date.now(),
+        status: "pending"
+    });
 }
