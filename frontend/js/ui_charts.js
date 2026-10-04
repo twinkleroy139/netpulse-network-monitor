@@ -115,9 +115,19 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         totalLoss += d.packet_loss || 0;
     });
 
-    let avgLatency = (totalLatency / filteredDevices.length).toFixed(2);
-    let avgLoss = (totalLoss / filteredDevices.length).toFixed(2);
 
+    // BUG FIX: Only calculate averages based on ACTIVE agents (Online or Warning)
+    let activeAgentCount = online + warning;
+    let avgLatency = "0.00";
+    let avgLoss = "0.00";
+
+    if (activeAgentCount > 0) {
+        avgLatency = (totalLatency / activeAgentCount).toFixed(2);
+        avgLoss = (totalLoss / activeAgentCount).toFixed(2);
+    } 
+
+
+    
     const statTotal = document.getElementById('stat-total');
     if(statTotal) statTotal.innerText = filteredDevices.length;
     
