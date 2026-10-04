@@ -27,3 +27,7 @@ Thumbs.db
 backend/app/core/serviceAccountKey.json
 serviceAccountKey.json
 *.json
+
+
+# Add this to the bottom of your .gitignore file
+frontend/js/config.js

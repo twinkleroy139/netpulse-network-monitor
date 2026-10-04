@@ -1,14 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC6-5Lpu2Pz8W5VPHB-nO1aR4jt6lAGnTA",
-  authDomain: "netpulse-network-monitor.firebaseapp.com",
-  projectId: "netpulse-network-monitor",
-  storageBucket: "netpulse-network-monitor.firebasestorage.app",
-  messagingSenderId: "343464434638",
-  appId: "1:343464434638:web:fbeae97be457a97d99699f"
-};
+import { firebaseConfig } from "./config.js";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app); // Export auth so dashboard.js can use it

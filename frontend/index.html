@@ -7,13 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Vis.js for Interactive Topology -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-[#0b101e] text-slate-200 antialiased h-screen flex overflow-hidden">
 
-    <!-- ========== SIDEBAR ========== -->
+    <!-- ========== SIDEBAR (PERMANENT SHELL) ========== -->
     <aside class="w-64 bg-[#111827] border-r border-slate-800 flex flex-col z-10 hidden md:flex h-full">
         <div class="p-5 flex items-center gap-3 border-b border-slate-800">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
@@ -26,25 +25,30 @@
         </div>
 
         <nav class="flex-1 px-3 py-4 space-y-1 text-sm font-medium overflow-y-auto">
-            <a href="#" id="nav-dashboard" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 transition">
+            <a href="#" id="nav-dashboard" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 transition">
                 <i class="fas fa-chart-pie w-4"></i> Dashboard
             </a>
             
-            <!-- LOCAL NODE BUTTON -->
-            <a href="#" id="nav-local-node" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-emerald-400 hover:text-emerald-300 transition mt-2 mb-2">
+            <a href="#" id="nav-local-node" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-emerald-400 hover:text-emerald-300 transition mt-2 mb-2 border-l-2 border-transparent">
                 <i class="fas fa-laptop-code w-4"></i> My Local Node
             </a>
 
-            <a href="#" id="nav-agents" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition">
+            <a href="#" id="nav-agents" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition border-l-2 border-transparent">
                 <i class="fas fa-server w-4"></i> Agents
             </a>
-            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition">
+            
+            <!-- NEW VOIP QUALITY TAB (For later) -->
+            <a href="#" id="nav-voip" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition border-l-2 border-transparent">
+                <i class="fas fa-phone-volume w-4"></i> VoIP Quality
+            </a>
+
+            <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition border-l-2 border-transparent">
                 <i class="fas fa-file-alt w-4"></i> Reports
             </a>
         </nav>
     </aside>
 
-    <!-- ========== MAIN CONTENT ========== -->
+    <!-- ========== MAIN CONTENT AREA ========== -->
     <main class="flex-1 overflow-y-auto flex flex-col relative">
         <header class="px-6 py-4 flex items-center justify-between border-b border-slate-800/60 bg-[#0b101e]/90 sticky top-0 z-20 backdrop-blur-sm">
             <div class="flex items-center gap-3 text-sm text-emerald-400">
@@ -54,14 +58,11 @@
             
             <div class="flex items-center gap-4">
                  <div class="text-sm text-slate-400 font-mono" id="current-time">--:--:--</div>
-                 <!-- Authentication Buttons -->
                  <div id="auth-header-container">
-                     <!-- Default state: Demo Mode -->
                      <a href="login.html" id="btn-demo-login" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-500/50 font-medium text-xs px-4 py-2 rounded transition flex items-center gap-2">
                          <i class="fas fa-sign-in-alt"></i> Login / Sign Up
                      </a>
                      
-                     <!-- Logged In State (Hidden initially) -->
                      <div id="logged-in-nav" class="hidden flex gap-3">
                          <button id="btn-profile" class="bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-medium text-xs px-4 py-2 rounded transition">
                             <i class="fas fa-user mr-1"></i> Profile Hub
@@ -74,167 +75,11 @@
             </div>
         </header>
 
-        <!-- VIEW 1: DASHBOARD -->
-        <div id="view-dashboard" class="p-6 space-y-6 flex-1 block">
-            
-            <!-- ENVIRONMENT TABS -->
-            <div class="flex items-center gap-2 border-b border-slate-800/60 pb-4 mb-4 overflow-x-auto">
-                <button class="env-tab active px-4 py-1.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30 transition" data-env="ALL">Global View</button>
-                <button class="env-tab px-4 py-1.5 rounded-full text-xs font-medium bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent transition" data-env="OFFICE">Office Network</button>
-                <button class="env-tab px-4 py-1.5 rounded-full text-xs font-medium bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent transition" data-env="HOME">Home Network</button>
-                <button class="env-tab px-4 py-1.5 rounded-full text-xs font-medium bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent transition" data-env="CLOUD">Cloud Servers</button>
-            </div>
-
-            <!-- KPI Cards with NEW Live Warnings -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="noc-card rounded-xl p-5 border-t-2 border-t-emerald-500">
-                    <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Total Active Agents</span> <i class="fas fa-desktop"></i></div>
-                    <div class="text-3xl font-bold text-white" id="stat-total">--</div>
-                    <div class="text-[11px] mt-2" id="stat-online-text">--</div>
-                </div>
-                <div class="noc-card rounded-xl p-5 border-t-2 border-t-emerald-500 transition-colors duration-300" id="card-latency">
-                    <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Avg. Latency</span> <i class="fas fa-network-wired"></i></div>
-                    <div class="text-3xl font-bold text-white"><span id="stat-latency">--</span> <span class="text-sm text-slate-500">ms</span></div>
-                    <div id="warn-latency" class="text-[11px] mt-2 text-amber-400 font-medium hidden animate-pulse"></div>
-                </div>
-                <div class="noc-card rounded-xl p-5 border-t-2 border-t-rose-500 transition-colors duration-300" id="card-loss">
-                    <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Packet Loss</span> <i class="fas fa-exclamation-triangle"></i></div>
-                    <div class="text-3xl font-bold text-white"><span id="stat-loss">--</span> <span class="text-sm text-slate-500">%</span></div>
-                    <div id="warn-loss" class="text-[11px] mt-2 text-amber-400 font-medium hidden animate-pulse"></div>
-                </div>
-                <div class="noc-card rounded-xl p-5 border-t-2 border-t-blue-500">
-                    <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Avg. Jitter</span> <i class="fas fa-wave-square"></i></div>
-                    <div class="text-3xl font-bold text-white"><span id="stat-jitter">--</span> <span class="text-sm text-slate-500">ms</span></div>
-                </div>
-            </div>
-
-            <!-- Interactive Topology & Health -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 noc-card rounded-xl flex flex-col overflow-hidden p-5">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-semibold text-white">Interactive Network Topology</h3>
-                        <span class="text-[10px] text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded bg-emerald-500/10"><i class="fas fa-mouse-pointer mr-1"></i> Draggable</span>
-                    </div>
-                    <!-- Vis.js Container -->
-                    <div id="topology-network" class="flex-1 w-full min-h-[350px] bg-[#0b101e]/50 rounded-lg border border-slate-700/50"></div>
-                </div>
-
-                <div class="noc-card rounded-xl p-5">
-                    <h3 class="text-sm font-semibold text-white mb-4">Network Health</h3>
-                    <div class="relative h-40 flex items-center justify-center">
-                        <canvas id="healthChart"></canvas>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
-                            <span class="text-xl font-bold text-white" id="chart-center-pct">--%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Rolling Latency Chart & Mini Table -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
-                <div class="noc-card rounded-xl p-5">
-                    <h3 class="text-sm font-semibold text-white mb-4">Historical Latency Trend</h3>
-                    <div class="h-48 w-full">
-                        <canvas id="latencyChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="noc-card rounded-xl flex flex-col overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-800/60 flex justify-between items-center">
-                        <h3 class="text-sm font-semibold text-white">Top Devices</h3>
-                        <span id="btn-view-all" class="text-xs text-blue-400 cursor-pointer hover:text-blue-300">View All Agents &rarr;</span>
-                    </div>
-                    <div class="overflow-x-auto flex-1">
-                        <table class="w-full text-xs text-left whitespace-nowrap">
-                            <thead class="text-slate-400 bg-slate-900/40">
-                                <tr>
-                                    <th class="px-4 py-2 font-medium">Device / IP</th>
-                                    <th class="px-4 py-2 font-medium">Type</th>
-                                    <th class="px-4 py-2 font-medium">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="device-table-body" class="divide-y divide-slate-800/40"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- VIEW 2: ALL AGENTS -->
-        <div id="view-agents" class="hidden p-6 space-y-6 flex-1 flex-col h-full">
-            <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-semibold text-white">All Network Agents</h2>
-            </div>
-            
-            <div class="noc-card rounded-xl flex-1 flex flex-col overflow-hidden">
-                <div class="overflow-y-auto flex-1 h-[600px]">
-                    <table class="w-full text-sm text-left whitespace-nowrap relative">
-                        <thead class="text-slate-400 bg-slate-900 sticky top-0 z-10 shadow-md">
-                            <tr>
-                                <th class="px-5 py-4 font-medium">Device ID</th>
-                                <th class="px-5 py-4 font-medium">Name</th>
-                                <th class="px-5 py-4 font-medium">Type</th>
-                                <th class="px-5 py-4 font-medium">IP Address</th>
-                                <th class="px-5 py-4 font-medium">Status</th>
-                                <th class="px-5 py-4 font-medium">Latency</th>
-                                <th class="px-5 py-4 font-medium">Loss</th>
-                            </tr>
-                        </thead>
-                        <tbody id="full-agents-table-body" class="divide-y divide-slate-800/40"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- VIEW 3: PROFILE / PROVISIONING HUB -->
-        <div id="view-profile" class="hidden p-6 space-y-6 flex-1 flex-col h-full max-w-4xl mx-auto">
-            <h2 class="text-2xl font-semibold text-white mb-2">Agent Provisioning</h2>
-            <p class="text-sm text-slate-400 mb-6">Connect your local machine to the NetPulse dashboard using your unique API key.</p>
-            
-            <div class="noc-card rounded-xl p-6 border-l-4 border-blue-500">
-                <h3 class="text-lg font-medium text-white mb-4"><i class="fas fa-terminal text-blue-400 mr-2"></i> Custom Script Generator</h3>
-                <p class="text-sm text-slate-400 mb-6">Configure your node environment to generate a custom tracking script.</p>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Environment Type</label>
-                        <select id="prov-env-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
-                            <option value="HOME">Home Network</option>
-                            <option value="OFFICE">Office Network</option>
-                            <option value="CLOUD">Cloud Server</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Device Name</label>
-                        <input type="text" id="prov-device-name" placeholder="e.g., HQ-Workstation" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-                
-                <div class="bg-slate-900 rounded border border-slate-700 p-4 font-mono text-sm text-emerald-400 relative">
-                    <button id="btn-copy-command" class="absolute top-3 right-3 text-slate-500 hover:text-white transition">
-                        <i class="far fa-copy"></i>
-                    </button>
-                    <code id="provisioning-command">python agent\netpulse_agent.py --key "Loading..." --id "Loading..." --name "Loading..."</code>
-                </div>
-            </div>
-
-            <div class="noc-card rounded-xl p-6 mt-6">
-                <h3 class="text-lg font-medium text-white mb-4">Account Information</h3>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <span class="text-slate-500 block">Email Address</span>
-                        <span id="profile-email" class="text-white font-medium">Loading...</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-500 block">Environment UID (API Key)</span>
-                        <span id="profile-uid" class="text-slate-300 font-mono text-xs">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- DYNAMIC VIEWS WILL BE INJECTED HERE -->
+        <div id="app-content" class="flex-1 w-full h-full"></div>
         
     </main>
 
-    <script type="module" src="js/dashboard.js?v=2.3"></script>
+    <script type="module" src="js/dashboard.js?v=3.0"></script>
 </body>
 </html>
