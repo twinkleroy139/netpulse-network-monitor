@@ -1,5 +1,10 @@
 // frontend/js/dashboard.js
 
+
+
+import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { auth, initSignOut } from "./auth.js"; 
 import { initProvisioning } from "./provisioning.js"; 
@@ -119,6 +124,35 @@ function initNavigation() {
         if(navVoip) {
             navVoip.classList.remove('text-slate-400', 'border-transparent');
             navVoip.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+        }
+
+        // --- NEW: Trigger Speed Test Logic ---
+        const btnSpeedTest = document.getElementById('btn-run-speedtest');
+        if (btnSpeedTest) {
+            btnSpeedTest.addEventListener('click', async () => {
+                if (!currentUser) return alert("Must be logged in to run tests.");
+                
+                btnSpeedTest.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Commanding Agents...`;
+                btnSpeedTest.disabled = true;
+
+                try {
+                    // Write a command to a 'commands' collection in Firebase
+                    const commandRef = doc(db, "networks", ENVIRONMENT_KEY, "commands", "speedtest");
+                    await setDoc(commandRef, {
+                        action: "run_speed_test",
+                        timestamp: Date.now(),
+                        status: "pending"
+                    });
+                    
+                    setTimeout(() => {
+                        btnSpeedTest.innerHTML = `<i class="fas fa-tachometer-alt"></i> Run Speed Test`;
+                        btnSpeedTest.disabled = false;
+                    }, 5000); // Reset button after 5 seconds
+                } catch (error) {
+                    console.error("Error triggering test:", error);
+                    btnSpeedTest.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`;
+                }
+            });
         }
     }
 
