@@ -1,4 +1,7 @@
 // frontend/js/ui_charts.js
+import { calculateMOS } from "./voip_engine.js";
+
+
 
 export let healthChart = null;
 export let latencyChart = null;
@@ -127,7 +130,7 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
     } 
 
 
-    
+
     const statTotal = document.getElementById('stat-total');
     if(statTotal) statTotal.innerText = filteredDevices.length;
     
@@ -140,9 +143,65 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
     const statLoss = document.getElementById('stat-loss');
     if(statLoss) statLoss.innerText = avgLoss;
     
-    const statJit = document.getElementById('stat-jitter');
-    if(statJit) statJit.innerText = (Math.random() * 5).toFixed(2); 
+    
+    
 
+
+
+    const statJit = document.getElementById('stat-jitter');
+    let simulatedJitter = (Math.random() * 5).toFixed(2);
+    
+    // If all agents are offline, jitter should be 0, not a random number
+    if (activeAgentCount === 0) {
+        simulatedJitter = "0.00";
+    }
+    if(statJit) statJit.innerText = simulatedJitter; 
+
+    // --- NEW: MOS Calculation & UI Update ---
+    const mosData = calculateMOS(parseFloat(avgLatency), parseFloat(simulatedJitter), parseFloat(avgLoss));
+    
+    const statMos = document.getElementById('stat-mos');
+    const statMosLabel = document.getElementById('stat-mos-label');
+    const cardMos = document.getElementById('card-mos');
+    const warnMos = document.getElementById('warn-mos');
+
+    if (activeAgentCount === 0) {
+        if(statMos) statMos.innerText = "--";
+        if(statMosLabel) statMosLabel.innerText = "";
+        if(cardMos) cardMos.className = "noc-card rounded-xl p-5 border-t-2 border-t-slate-600 transition-colors duration-300";
+        if(warnMos) warnMos.classList.add('hidden');
+    } else {
+        if(statMos) {
+            statMos.innerText = mosData.score;
+            statMos.className = `text-3xl font-bold ${mosData.colorClass}`;
+        }
+        if(statMosLabel) statMosLabel.innerText = mosData.label;
+        if(cardMos) cardMos.className = `noc-card rounded-xl p-5 border-t-2 ${mosData.borderClass} transition-colors duration-300`;
+        
+        if (warnMos) {
+            if (mosData.warning !== "") {
+                warnMos.classList.remove('hidden');
+                warnMos.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${mosData.warning}`;
+            } else {
+                warnMos.classList.add('hidden');
+            }
+        }
+        
+        // --- NEW: Update Topology VoIP Node Color ---
+        if (topoNodes.get(4)) { 
+            let nodeColor = '#10b981'; // Green
+            if (mosData.score < 3.6) nodeColor = '#f43f5e'; // Red
+            else if (mosData.score < 4.0) nodeColor = '#fbbf24'; // Yellow
+            
+            topoNodes.update({ 
+                id: 4, 
+                color: { background: '#1e293b', border: nodeColor },
+                title: `MOS: ${mosData.score} (${mosData.label})` // Tooltip on hover
+            });
+        }
+    }
+    
+    // --- Existing Warning Logic ---
     if (warnLatEl) {
         if (avgLatency >= 100 || warning > 0) {
             warnLatEl.classList.remove('hidden');

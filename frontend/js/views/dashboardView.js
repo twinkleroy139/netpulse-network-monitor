@@ -1,3 +1,5 @@
+// frontend/js/views/dashboardView.js
+
 export const dashboardHTML = `
     <!-- ENVIRONMENT TABS -->
     <div class="flex items-center gap-2 border-b border-slate-800/60 pb-4 mb-4 overflow-x-auto">
@@ -8,7 +10,7 @@ export const dashboardHTML = `
     </div>
 
     <!-- KPI Cards with Live Warnings -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div class="noc-card rounded-xl p-5 border-t-2 border-t-emerald-500">
             <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Total Active Agents</span> <i class="fas fa-desktop"></i></div>
             <div class="text-3xl font-bold text-white" id="stat-total">--</div>
@@ -27,6 +29,13 @@ export const dashboardHTML = `
         <div class="noc-card rounded-xl p-5 border-t-2 border-t-blue-500">
             <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Avg. Jitter</span> <i class="fas fa-wave-square"></i></div>
             <div class="text-3xl font-bold text-white"><span id="stat-jitter">--</span> <span class="text-sm text-slate-500">ms</span></div>
+        </div>
+        
+        <!-- NEW MOS VoIP CARD -->
+        <div class="noc-card rounded-xl p-5 border-t-2 border-t-slate-600 transition-colors duration-300" id="card-mos">
+            <div class="flex justify-between text-slate-400 text-xs mb-2"><span>Call Quality (MOS)</span> <i class="fas fa-phone-volume"></i></div>
+            <div class="text-3xl font-bold text-white"><span id="stat-mos">--</span> <span class="text-sm text-slate-500" id="stat-mos-label"></span></div>
+            <div id="warn-mos" class="text-[11px] mt-2 text-amber-400 font-medium hidden animate-pulse"></div>
         </div>
     </div>
 
