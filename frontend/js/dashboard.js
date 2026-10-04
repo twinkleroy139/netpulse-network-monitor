@@ -1,12 +1,10 @@
 // frontend/js/dashboard.js
 
-
-import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest } from "./firebase_client.js";
+// frontend/js/dashboard.js
 
 import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
 import { auth, initSignOut } from "./auth.js"; 
 import { initProvisioning } from "./provisioning.js"; 
 
@@ -15,13 +13,11 @@ import { agentsHTML } from "./views/agentsView.js";
 import { profileHTML } from "./views/profileView.js";
 import { voipHTML } from "./views/voipView.js";
 
-
-
-
 import { initTopology, initCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
-import { listenToFirestore, startWatchdogTimer, allDevicesData } from "./firebase_client.js";
+import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest } from "./firebase_client.js";
 
 let currentEnvironmentFilter = "ALL"; 
+// ... keep the rest of the file exactly the same ...
 let ENVIRONMENT_KEY = "demo_env_12345"; 
 let currentUser = null;
 
