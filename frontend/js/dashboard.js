@@ -7,6 +7,10 @@ import { initProvisioning } from "./provisioning.js";
 import { dashboardHTML } from "./views/dashboardView.js";
 import { agentsHTML } from "./views/agentsView.js";
 import { profileHTML } from "./views/profileView.js";
+import { voipHTML } from "./views/voipView.js";
+
+
+
 
 import { initTopology, initCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
 import { listenToFirestore, startWatchdogTimer, allDevicesData } from "./firebase_client.js";
@@ -25,6 +29,7 @@ function initNavigation() {
     const navDashboard = document.getElementById('nav-dashboard');
     const navLocalNode = document.getElementById('nav-local-node'); 
     const navAgents = document.getElementById('nav-agents');
+    const navVoip = document.getElementById('nav-voip');
     const btnProfile = document.getElementById('btn-profile');
 
     function resetSidebarHighlight() {
@@ -33,6 +38,8 @@ function initNavigation() {
             link.classList.add('text-slate-400', 'border-transparent');
         });
     }
+
+
 
     function loadDashboardView(filterType = "ALL") {
         resetSidebarHighlight();
@@ -105,8 +112,21 @@ function initNavigation() {
         }
     }
 
+
+    function loadVoipView() {
+        resetSidebarHighlight();
+        appContent.innerHTML = `<div class="p-6 space-y-6 flex-1 flex-col h-full">${voipHTML}</div>`;
+        if(navVoip) {
+            navVoip.classList.remove('text-slate-400', 'border-transparent');
+            navVoip.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+        }
+    }
+
+
+
     if (navDashboard) navDashboard.addEventListener('click', () => loadDashboardView("ALL"));
     if (navAgents) navAgents.addEventListener('click', loadAgentsView);
+    if (navVoip) navVoip.addEventListener('click', loadVoipView);
     if (btnProfile) btnProfile.addEventListener('click', loadProfileView);
     
     document.addEventListener('click', function(e){
