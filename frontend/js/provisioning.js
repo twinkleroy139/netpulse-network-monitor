@@ -18,7 +18,9 @@ export function initProvisioning(uid) {
         // Use the static random ID, just update the prefix
         const deviceId = `${envType}-${currentRandomId}`;
 
-        commandOutput.innerHTML = `python agent\\netpulse_agent.py --key "<span class="text-blue-400">${uid}</span>" --id "${deviceId}" --name "${deviceName}"`;
+        // Universal one-liner: Downloads script from GitHub and executes it instantly
+        commandOutput.innerHTML = `curl.exe -sO https://raw.githubusercontent.com/twinkleroy139/netpulse-network-monitor/main/agent/netpulse_agent.py && python netpulse_agent.py --key "<span class="text-blue-400">${uid}</span>" --id "${deviceId}" --name "${deviceName}"`;
+        
     }
 
     // Regenerate the ID only if they change the environment type (Home -> Office)
