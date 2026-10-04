@@ -24,6 +24,7 @@ let currentUser = null;
 let healthChart = null;
 let latencyChart = null;
 let networkTopology = null;
+let allDevicesMap = new Map(); // NEW: Tracking map to include timestamps
 let allDevicesData = [];
 
 let topoNodes = new vis.DataSet([]);
@@ -37,7 +38,7 @@ setInterval(() => {
 function initNavigation() {
     const navDashboard = document.getElementById('nav-dashboard');
     const navAgents = document.getElementById('nav-agents');
-    const navLocalNode = document.getElementById('nav-local-node'); // NEW: Local Node Button
+    const navLocalNode = document.getElementById('nav-local-node'); 
     
     const viewDashboard = document.getElementById('view-dashboard');
     const viewAgents = document.getElementById('view-agents');
@@ -53,7 +54,7 @@ function initNavigation() {
         
         if(navDashboard) navDashboard.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
         if(navAgents) navAgents.classList.remove('bg-blue-500/10', 'text-blue-400', 'border-l-2', 'border-blue-500');
-        if(navLocalNode) navLocalNode.classList.remove('bg-blue-500/10', 'border-l-2', 'border-blue-500');
+        if(navLocalNode) navLocalNode.classList.remove('bg-emerald-500/10', 'text-emerald-300', 'border-emerald-500/30');
     }
 
     function showDashboard() {
@@ -83,7 +84,6 @@ function initNavigation() {
     if (btnViewAll) btnViewAll.addEventListener('click', showAgents);
     if (btnProfile) btnProfile.addEventListener('click', showProfile);
 
-    // --- NEW: Local Node Sidebar Logic ---
     if (navLocalNode) {
         navLocalNode.addEventListener('click', () => {
             const myNodeId = localStorage.getItem('my_local_node_id');
@@ -91,19 +91,15 @@ function initNavigation() {
                 alert("You haven't configured a local script yet! Go to the Profile Hub first.");
                 return;
             }
-            
             hideAllViews();
             if(viewDashboard) { viewDashboard.classList.remove('hidden'); viewDashboard.classList.add('block'); }
-            navLocalNode.classList.add('bg-blue-500/10', 'border-l-2', 'border-blue-500');
-
-            // Force filter to exact machine ID
+            navLocalNode.classList.add('bg-emerald-500/10', 'text-emerald-300', 'border-emerald-500/30');
             currentEnvironmentFilter = "LOCAL_NODE";
             processTelemetryData(allDevicesData);
             updateTables();
         });
     }
 
-    // --- Environment Tabs Logic ---
     const envTabs = document.querySelectorAll('.env-tab');
     envTabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -111,7 +107,6 @@ function initNavigation() {
                 t.classList.remove('bg-blue-500/20', 'text-blue-400', 'border-blue-500/30');
                 t.classList.add('bg-slate-800/50', 'text-slate-400', 'border-transparent');
             });
-            
             const clickedTab = e.target;
             clickedTab.classList.remove('bg-slate-800/50', 'text-slate-400', 'border-transparent');
             clickedTab.classList.add('bg-blue-500/20', 'text-blue-400', 'border-blue-500/30');
@@ -179,15 +174,18 @@ function initCharts() {
 }
 
 function processTelemetryData(devices) {
+    const warnLatEl = document.getElementById('warn-latency');
+    const warnLossEl = document.getElementById('warn-loss');
+
     if (devices.length === 0) {
-        const statTotal = document.getElementById('stat-total');
-        if(statTotal) statTotal.innerText = "0";
+        document.getElementById('stat-total').innerText = "0";
+        if (warnLatEl) warnLatEl.classList.add('hidden');
+        if (warnLossEl) warnLossEl.classList.add('hidden');
         return; 
     }
 
     let filteredDevices = devices;
     
-    // NEW: Apply Local Node Filter or Environment Filter
     if (currentEnvironmentFilter === "LOCAL_NODE") {
         const myNodeId = localStorage.getItem('my_local_node_id');
         filteredDevices = devices.filter(d => d.id === myNodeId);
@@ -200,6 +198,8 @@ function processTelemetryData(devices) {
         document.getElementById('stat-latency').innerText = "--";
         document.getElementById('stat-loss').innerText = "--";
         document.getElementById('stat-online-text').innerHTML = `<span class="text-slate-500">No active agents.</span>`;
+        if (warnLatEl) warnLatEl.classList.add('hidden');
+        if (warnLossEl) warnLossEl.classList.add('hidden');
         if (healthChart) {
             healthChart.data.datasets[0].data = [0, 0, 1];
             healthChart.update();
@@ -238,6 +238,25 @@ function processTelemetryData(devices) {
     const statJit = document.getElementById('stat-jitter');
     if(statJit) statJit.innerText = (Math.random() * 5).toFixed(2); 
 
+    // --- NEW: Live Warning Indicators Logic ---
+    if (warnLatEl) {
+        if (avgLatency >= 100 || warning > 0) {
+            warnLatEl.classList.remove('hidden');
+            warnLatEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> Critical Latency Spike`;
+        } else {
+            warnLatEl.classList.add('hidden');
+        }
+    }
+
+    if (warnLossEl) {
+        if (avgLoss >= 2.0 || warning > 0) {
+            warnLossEl.classList.remove('hidden');
+            warnLossEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> Packet Loss Warning: ${avgLoss}%`;
+        } else {
+            warnLossEl.classList.add('hidden');
+        }
+    }
+
     if (healthChart) {
         healthChart.data.datasets[0].data = [online, warning, offline];
         healthChart.update();
@@ -262,7 +281,6 @@ function updateTables() {
     if(!tbody) return;
     tbody.innerHTML = "";
 
-    // Keep the mini table matching the filtered list
     let filteredList = allDevicesData;
     if (currentEnvironmentFilter === "LOCAL_NODE") {
         const myNodeId = localStorage.getItem('my_local_node_id');
@@ -313,18 +331,29 @@ function getStatusColors(status) {
 }
 
 function listenToFirestore() {
-    if (firestoreUnsubscribe) {
-        firestoreUnsubscribe();
-    }
-
+    if (firestoreUnsubscribe) firestoreUnsubscribe();
+    
     const devicesRef = collection(db, "networks", ENVIRONMENT_KEY, "devices");
     
+    // NEW: Use docChanges() to track exactly when an agent last sent data
     firestoreUnsubscribe = onSnapshot(devicesRef, (snapshot) => {
-        allDevicesData = [];
-        snapshot.forEach((doc) => {
-            allDevicesData.push({ id: doc.id, ...doc.data() });
+        snapshot.docChanges().forEach((change) => {
+            const docData = change.doc.data();
+            const docId = change.doc.id;
+
+            if (change.type === "added" || change.type === "modified") {
+                allDevicesMap.set(docId, {
+                    id: docId,
+                    ...docData,
+                    lastSeen: Date.now() 
+                });
+            }
+            if (change.type === "removed") {
+                allDevicesMap.delete(docId);
+            }
         });
-        
+
+        allDevicesData = Array.from(allDevicesMap.values());
         processTelemetryData(allDevicesData);
         updateTables();
     }, (error) => {
@@ -369,6 +398,29 @@ function initDashboard() {
     initCharts();
     initSignOut(); 
     handleAuthState();
+
+    // --- NEW: Watchdog Timer ---
+    // Scans memory every 5 seconds. If no update in 15 seconds, mark Offline.
+    setInterval(() => {
+        let changed = false;
+        const now = Date.now();
+
+        allDevicesMap.forEach((device, id) => {
+            if (now - device.lastSeen > 15000 && device.status !== "Offline") {
+                device.status = "Offline";
+                device.latency_ms = 0;
+                device.packet_loss = 0;
+                allDevicesMap.set(id, device);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            allDevicesData = Array.from(allDevicesMap.values());
+            processTelemetryData(allDevicesData);
+            updateTables();
+        }
+    }, 5000);
 }
 
 window.addEventListener('DOMContentLoaded', initDashboard);
