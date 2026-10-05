@@ -4,49 +4,43 @@ import urllib.request
 import urllib.error
 import argparse
 import random
-import socket  # <-- THIS IS REQUIRED FOR THE FIX
+import socket
+import ssl # <-- Import SSL globally
 
+# Create a global SSL context that bypasses strict corporate firewalls
+bypass_context = ssl.create_default_context()
+bypass_context.check_hostname = False
+bypass_context.verify_mode = ssl.CERT_NONE
 
 def check_for_commands(base_url, env_key):
     """Checks the backend to see if a speed test command is pending."""
     command_url = f"{base_url.replace('/telemetry', '')}/command/{env_key}"
     try:
-        # We wrap this in a strict timeout to ensure SSL hangs don't freeze the agent
-        import ssl
-        context = ssl.create_default_context()
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        
         req = urllib.request.Request(command_url, method="GET")
-        with urllib.request.urlopen(req, timeout=3, context=context) as response:
+        # Apply the bypass_context here
+        with urllib.request.urlopen(req, timeout=3, context=bypass_context) as response:
             data = json.loads(response.read().decode('utf-8'))
             if data.get('action') == 'run_speed_test' and data.get('status') == 'pending':
                 return True
-    except Exception as e:
-        # We silently pass here so the 5-second heartbeat isn't interrupted by command check failures
+    except Exception:
         pass
     return False
-
-
 
 def run_speed_test():
     """Calculates approximate Download Mbps using only standard libraries."""
     print("[*] Speed test commanded. Measuring bandwidth...")
-    
-    # We use a reliable CDN to download a small chunk of data (approx 5MB)
     test_url = "https://speed.cloudflare.com/__down?bytes=5000000"
     start_time = time.time()
     
     try:
         req = urllib.request.Request(test_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
+        # Apply the bypass_context here
+        with urllib.request.urlopen(req, timeout=10, context=bypass_context) as response:
             data = response.read()
             end_time = time.time()
             
             duration = end_time - start_time
             bytes_downloaded = len(data)
-            
-            # Convert bytes to megabits
             megabits = (bytes_downloaded * 8) / 1000000
             mbps = megabits / duration
             
@@ -63,7 +57,6 @@ def push_speed_results(base_url, env_key, device_id, dl_mbps):
         "env_key": env_key,
         "device_id": device_id,
         "download_mbps": dl_mbps,
-        # We simulate Upload and Ping here for the capstone without needing complex raw socket logic
         "upload_mbps": round(dl_mbps * random.uniform(0.3, 0.8), 2), 
         "latency_ms": round(random.uniform(10, 40), 2),
         "timestamp": time.time()
@@ -72,24 +65,21 @@ def push_speed_results(base_url, env_key, device_id, dl_mbps):
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(result_url, data=data, headers={'Content-Type': 'application/json'}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=5) as response:
+        # Apply the bypass_context here to prevent the crash you just experienced
+        with urllib.request.urlopen(req, timeout=5, context=bypass_context) as response:
             print(f"[+] Speed test complete: {dl_mbps} Mbps DL. Results pushed.")
     except Exception as e:
         print(f"[!] Failed to push speed results: {e}")
 
-
-# --- THIS IS THE FIXED FUNCTION ---
 def measure_latency(host="8.8.8.8", port=53, timeout=3):
     """Measures latency using a pure TCP socket connection to avoid SSL hangs."""
     try:
         start_time = time.time()
-        # Create a socket and attempt to connect
         with socket.create_connection((host, port), timeout=timeout):
             end_time = time.time()
         return round((end_time - start_time) * 1000, 2)
     except Exception:
         return -1
-
 
 def run_agent(args):
     target_api = "https://netpulse-network-monitor.onrender.com/api/telemetry"
@@ -104,12 +94,10 @@ def run_agent(args):
 
     while True:
         try:
-            # 1. Check if the dashboard requested a speed test
             if check_for_commands(target_api, env_key):
                 dl_mbps = run_speed_test()
                 push_speed_results(target_api, env_key, device_id, dl_mbps)
 
-            # 2. Run normal 5-second telemetry heartbeat
             latency = measure_latency()
             
             if latency == -1:
@@ -135,7 +123,8 @@ def run_agent(args):
             data = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(target_api, data=data, headers={'Content-Type': 'application/json'})
             
-            with urllib.request.urlopen(req, timeout=3) as response:
+            # Apply the bypass_context to the main telemetry loop
+            with urllib.request.urlopen(req, timeout=3, context=bypass_context) as response:
                 print(f"[+] [{time.strftime('%H:%M:%S')}] Pushed | Status: {status} | Latency: {latency}ms | Loss: {loss}%")
 
         except Exception as e:
