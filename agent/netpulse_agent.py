@@ -6,18 +6,28 @@ import argparse
 import random
 import socket  # <-- THIS IS REQUIRED FOR THE FIX
 
+
 def check_for_commands(base_url, env_key):
     """Checks the backend to see if a speed test command is pending."""
     command_url = f"{base_url.replace('/telemetry', '')}/command/{env_key}"
     try:
+        # We wrap this in a strict timeout to ensure SSL hangs don't freeze the agent
+        import ssl
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        
         req = urllib.request.Request(command_url, method="GET")
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with urllib.request.urlopen(req, timeout=3, context=context) as response:
             data = json.loads(response.read().decode('utf-8'))
             if data.get('action') == 'run_speed_test' and data.get('status') == 'pending':
                 return True
-    except Exception:
+    except Exception as e:
+        # We silently pass here so the 5-second heartbeat isn't interrupted by command check failures
         pass
     return False
+
+
 
 def run_speed_test():
     """Calculates approximate Download Mbps using only standard libraries."""
