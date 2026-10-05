@@ -4,6 +4,7 @@ import urllib.request
 import urllib.error
 import argparse
 import random
+import socket  # <-- THIS IS REQUIRED FOR THE FIX
 
 def check_for_commands(base_url, env_key):
     """Checks the backend to see if a speed test command is pending."""
@@ -67,15 +68,18 @@ def push_speed_results(base_url, env_key, device_id, dl_mbps):
         print(f"[!] Failed to push speed results: {e}")
 
 
-def measure_latency(host="www.google.com"):
+# --- THIS IS THE FIXED FUNCTION ---
+def measure_latency(host="8.8.8.8", port=53, timeout=3):
+    """Measures latency using a pure TCP socket connection to avoid SSL hangs."""
     try:
-        start = time.time()
-        req = urllib.request.Request(f"http://{host}", method="HEAD")
-        with urllib.request.urlopen(req, timeout=3) as response:
-            end = time.time()
-        return round((end - start) * 1000, 2)
+        start_time = time.time()
+        # Create a socket and attempt to connect
+        with socket.create_connection((host, port), timeout=timeout):
+            end_time = time.time()
+        return round((end_time - start_time) * 1000, 2)
     except Exception:
         return -1
+
 
 def run_agent(args):
     target_api = "https://netpulse-network-monitor.onrender.com/api/telemetry"
