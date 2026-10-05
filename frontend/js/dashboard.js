@@ -191,6 +191,9 @@ function handleAuthState() {
             if(profileUid) profileUid.innerText = user.uid;
             
             listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
+            listenToSpeedTests(ENVIRONMENT_KEY);
+
+
         } else {
             currentUser = null;
             ENVIRONMENT_KEY = "demo_env_12345";
@@ -199,6 +202,7 @@ function handleAuthState() {
             if(loggedInNav) loggedInNav.classList.add('hidden');
             
             listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
+            listenToSpeedTests(ENVIRONMENT_KEY);
         }
     });
 }
