@@ -123,7 +123,10 @@ function initNavigation() {
             navVoip.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
         }
 
-        // --- UPDATED: Trigger Speed Test Logic ---
+        // --- NEW: Attach the speed test listener ONLY when this view loads ---
+        listenToSpeedTests(ENVIRONMENT_KEY);
+
+        // --- Trigger Speed Test Logic ---
         const btnSpeedTest = document.getElementById('btn-run-speedtest');
         if (btnSpeedTest) {
             btnSpeedTest.addEventListener('click', async () => {
@@ -133,7 +136,7 @@ function initNavigation() {
                 btnSpeedTest.disabled = true;
 
                 try {
-                    await triggerSpeedTest(ENVIRONMENT_KEY); // <-- Clean function call
+                    await triggerSpeedTest(ENVIRONMENT_KEY); 
                     
                     setTimeout(() => {
                         btnSpeedTest.innerHTML = `<i class="fas fa-tachometer-alt"></i> Run Speed Test`;
@@ -191,7 +194,6 @@ function handleAuthState() {
             if(profileUid) profileUid.innerText = user.uid;
             
             listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
-            listenToSpeedTests(ENVIRONMENT_KEY);
 
 
         } else {
@@ -202,7 +204,7 @@ function handleAuthState() {
             if(loggedInNav) loggedInNav.classList.add('hidden');
             
             listenToFirestore(ENVIRONMENT_KEY, currentEnvironmentFilter);
-            listenToSpeedTests(ENVIRONMENT_KEY);
+        
         }
     });
 }
