@@ -3,6 +3,8 @@ import { calculateMOS } from "./voip_engine.js";
 
 export let healthChart = null;
 export let latencyChart = null;
+export let mosTrendChart = null; // NEW
+export let degChart = null;      // NEW
 export let networkTopology = null;
 export let topoNodes = new vis.DataSet([]);
 export let topoEdges = new vis.DataSet([]);
@@ -11,7 +13,6 @@ export function initTopology() {
     const container = document.getElementById('topology-network');
     if(!container) return;
     
-    // NEW: Clear old data before drawing to prevent duplicate ID crashes
     topoNodes.clear();
     topoEdges.clear();
 
@@ -63,6 +64,32 @@ export function initCharts() {
                 scales: { y: { beginAtZero: true, grid: { color: 'rgba(51, 65, 85, 0.2)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
                 animation: { duration: 400 }
             }
+        });
+    }
+}
+
+// --- NEW: Initialize the VoIP Charts ---
+export function initVoipCharts() {
+    const ctxMosEl = document.getElementById('mosChart');
+    if (ctxMosEl) {
+        const ctxMos = ctxMosEl.getContext('2d');
+        mosTrendChart = new Chart(ctxMos, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Mean Opinion Score (MOS)', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, borderWidth: 2, fill: true }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { y: { min: 1, max: 5, grid: { color: 'rgba(51, 65, 85, 0.2)' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } }
+            }
+        });
+    }
+
+    const ctxDegEl = document.getElementById('degChart');
+    if (ctxDegEl) {
+        const ctxDeg = ctxDegEl.getContext('2d');
+        degChart = new Chart(ctxDeg, {
+            type: 'doughnut',
+            data: { labels: ['Latency', 'Jitter', 'Packet Loss'], datasets: [{ data: [1, 1, 1], backgroundColor: ['#3b82f6', '#8b5cf6', '#f43f5e'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
         });
     }
 }
@@ -154,7 +181,6 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
     }
     if(statJit) statJit.innerText = simulatedJitter; 
 
-    // MOS Calculation & UI Update
     const mosData = calculateMOS(parseFloat(avgLatency), parseFloat(simulatedJitter), parseFloat(avgLoss));
     
     const statMos = document.getElementById('stat-mos');
@@ -184,7 +210,6 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
             }
         }
         
-        // Update Topology VoIP Node Color
         if (topoNodes.get(4)) { 
             let nodeColor = '#10b981'; // Green
             if (mosData.score < 3.6) nodeColor = '#f43f5e'; // Red
@@ -198,7 +223,6 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
         }
     }
     
-    // Existing Warning Logic
     if (warnLatEl) {
         if (avgLatency >= 100 || warning > 0) {
             warnLatEl.classList.remove('hidden');
@@ -242,6 +266,31 @@ export function processTelemetryData(devices, currentEnvironmentFilter) {
             latencyChart.data.datasets[0].data.shift();
         }
         latencyChart.update();
+    }
+
+    // --- NEW: Feed the VoIP Charts Live ---
+    if (mosTrendChart && mosData) {
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        mosTrendChart.data.labels.push(now);
+        mosTrendChart.data.datasets[0].data.push(parseFloat(mosData.score));
+        if (mosTrendChart.data.labels.length > 15) {
+            mosTrendChart.data.labels.shift();
+            mosTrendChart.data.datasets[0].data.shift();
+        }
+        mosTrendChart.update();
+    }
+
+    if (degChart) {
+        const latImpact = Math.min(parseFloat(avgLatency), 300);
+        const jitImpact = Math.min(parseFloat(simulatedJitter) * 5, 100);
+        const lossImpact = Math.min(parseFloat(avgLoss) * 20, 100);
+        
+        if (latImpact < 50 && jitImpact < 10 && lossImpact < 5) {
+             degChart.data.datasets[0].data = [1, 1, 1];
+        } else {
+             degChart.data.datasets[0].data = [latImpact, jitImpact, lossImpact];
+        }
+        degChart.update();
     }
 }
 

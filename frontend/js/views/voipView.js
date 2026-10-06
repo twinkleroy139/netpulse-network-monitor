@@ -56,14 +56,14 @@ export const voipHTML = `
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="noc-card rounded-xl p-5 lg:col-span-2">
             <h3 class="text-sm font-semibold text-white mb-4">MOS Trend Over Time</h3>
-            <div class="h-64 w-full flex items-center justify-center border border-slate-700/30 rounded bg-slate-900/30">
-                <span class="text-slate-500 text-sm"><i class="fas fa-chart-line mr-2"></i> Chart rendering pending backend speed test</span>
+            <div class="h-64 w-full relative">
+                <canvas id="mosChart"></canvas>
             </div>
         </div>
         <div class="noc-card rounded-xl p-5">
             <h3 class="text-sm font-semibold text-white mb-4">Degradation Causes</h3>
-            <div class="h-64 w-full flex items-center justify-center border border-slate-700/30 rounded bg-slate-900/30">
-                 <span class="text-slate-500 text-sm"><i class="fas fa-chart-pie mr-2"></i> Insufficient data</span>
+            <div class="h-64 w-full relative">
+                 <canvas id="degChart"></canvas>
             </div>
         </div>
     </div>

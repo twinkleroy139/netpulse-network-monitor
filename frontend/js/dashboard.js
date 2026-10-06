@@ -11,7 +11,7 @@ import { agentsHTML } from "./views/agentsView.js";
 import { profileHTML } from "./views/profileView.js";
 import { voipHTML } from "./views/voipView.js";
 
-import { initTopology, initCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
+import { initTopology, initCharts, initVoipCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
 import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest, listenToSpeedTests } from "./firebase_client.js";
 
 let currentEnvironmentFilter = "ALL"; 
@@ -122,6 +122,7 @@ function initNavigation() {
 
         // --- NEW: Attach the speed test listener ONLY when this view loads ---
         listenToSpeedTests(ENVIRONMENT_KEY);
+        initVoipCharts();
 
         // --- Trigger Speed Test Logic ---
         const btnSpeedTest = document.getElementById('btn-run-speedtest');
