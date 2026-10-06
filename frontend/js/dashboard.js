@@ -10,9 +10,10 @@ import { dashboardHTML } from "./views/dashboardView.js";
 import { agentsHTML } from "./views/agentsView.js";
 import { profileHTML } from "./views/profileView.js";
 import { voipHTML } from "./views/voipView.js";
+import { reportsHTML } from "./views/reportsView.js";
 
 import { initTopology, initCharts, initVoipCharts, processTelemetryData, updateTables, renderFullAgentsTable } from "./ui_charts.js";
-import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest, listenToSpeedTests } from "./firebase_client.js";
+import { listenToFirestore, startWatchdogTimer, allDevicesData, triggerSpeedTest, listenToSpeedTests, exportSpeedTestCSV } from "./firebase_client.js";
 
 let currentEnvironmentFilter = "ALL"; 
 let ENVIRONMENT_KEY = "demo_env_12345"; 
@@ -30,6 +31,9 @@ function initNavigation() {
     const navAgents = document.getElementById('nav-agents');
     const navVoip = document.getElementById('nav-voip');
     const btnProfile = document.getElementById('btn-profile');
+
+    const navReports = document.getElementById('nav-reports');
+    if (navReports) navReports.addEventListener('click', loadReportsView);
 
     function resetSidebarHighlight() {
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -144,6 +148,35 @@ function initNavigation() {
                     console.error("Error triggering test:", error);
                     btnSpeedTest.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`;
                 }
+            });
+        }
+    }
+
+
+
+    function loadReportsView() {
+        resetSidebarHighlight();
+        appContent.innerHTML = `<div class="p-6 space-y-6 flex-1 flex-col h-full">${reportsHTML}</div>`;
+        
+        const navReports = document.getElementById('nav-reports'); // We will add this ID to index.html in the next step
+        if(navReports) {
+            navReports.classList.remove('text-slate-400', 'border-transparent');
+            navReports.classList.add('bg-blue-500/10', 'text-blue-400', 'border-blue-500');
+        }
+
+        // Attach listener to the new Export CSV button
+        const btnExport = document.getElementById('btn-export-csv');
+        if (btnExport) {
+            btnExport.addEventListener('click', () => {
+                if (!currentUser) return alert("Must be logged in to export reports.");
+                
+                // Visual feedback
+                const originalText = btnExport.innerHTML;
+                btnExport.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating...`;
+                
+                exportSpeedTestCSV(ENVIRONMENT_KEY).finally(() => {
+                    setTimeout(() => { btnExport.innerHTML = originalText; }, 1000);
+                });
             });
         }
     }

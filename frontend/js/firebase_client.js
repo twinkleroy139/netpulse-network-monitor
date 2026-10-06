@@ -4,6 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, collection, onSnapshot, doc, setDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
 import { processTelemetryData, updateTables } from "./ui_charts.js";
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"; 
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -168,4 +169,56 @@ export function listenToSpeedTests(ENVIRONMENT_KEY) {
             }
         });
     });
+}
+
+
+
+// --- NEW: CSV Export Logic for Phase 6 ---
+export async function exportSpeedTestCSV(ENVIRONMENT_KEY) {
+    try {
+        const historyRef = collection(db, "networks", ENVIRONMENT_KEY, "speed_history");
+        const q = query(historyRef, orderBy("timestamp", "desc"));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            alert("No speed test history found to export.");
+            return;
+        }
+
+        // 1. Build the CSV Header
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Date,Time,Device_ID,Download_Mbps,Upload_Mbps,Latency_ms\n";
+
+        // 2. Loop through data and build rows
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const dateObj = new Date(data.timestamp * 1000);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString();
+            
+            const row = [
+                dateStr,
+                timeStr,
+                data.device_id || "Unknown",
+                data.download_mbps.toFixed(2),
+                data.upload_mbps.toFixed(2),
+                data.latency_ms.toFixed(2)
+            ].join(",");
+            
+            csvContent += row + "\n";
+        });
+
+        // 3. Trigger Browser Download
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `netpulse_speed_report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link); // Required for Firefox
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (error) {
+        console.error("Error exporting CSV:", error);
+        alert("Failed to export CSV. See console for details.");
+    }
 }
