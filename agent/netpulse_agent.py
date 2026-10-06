@@ -104,7 +104,7 @@ def run_agent(args):
                 status = "Offline"
                 loss = 100.0
                 latency = 0.0
-            elif latency > 100:
+            elif latency > 10:
                 status = "Warning"
                 loss = round(random.uniform(1.0, 5.0), 2)
             else:
